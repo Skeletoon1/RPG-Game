@@ -17,6 +17,23 @@ That's it. No Python, no terminal, nothing to install. Your progress saves
 automatically in the browser. *(For developers: it's plain HTML/CSS/JS and runs
 straight off the filesystem — no build step or server needed.)*
 
+**The browser version features:**
+- **Open, point-based builds.** Your Origin is just a starting path. Each level
+  grants **Skill Points** (invest across 10 schools — Necromancy, Pyromancy,
+  Cryomancy, Storm, Arcane, Faith, Blade, Archery, Guard, Blood) and **Attribute
+  Points** (HP/MP/ATK/MAG/DEF/RES/SPD/Crit). Mix any schools you like.
+- **Schools gate abilities.** A spell unlocks only when your rank in its school
+  meets the requirement — no Necromancy, no raising the dead… **unless you read a
+  Scroll** of that spell (a consumable bypass).
+- **Equipment & loot.** Enemies drop weapons/armor/accessories (bosses drop the
+  best); equip them per-character to boost stats.
+- **Multi-character party.** Recruit up to 4 guardians, control them all in
+  battle, or toggle **Auto** to let allies fight themselves.
+- **Procedural sound & music** via the Web Audio API (no audio files) — element-
+  based spell SFX, hits, level-ups, and per-area background music. Mute with 🔊.
+- Animated canvas combat: pixel/vector sprites, particle spell effects, floating
+  damage/heal numbers, screen shake, and click-to-target.
+
 ### ⌨️ Terminal version (Python)
 
 Pure Python 3, **no dependencies**. Just run it.

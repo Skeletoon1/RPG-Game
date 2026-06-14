@@ -1,113 +1,120 @@
 "use strict";
-// Headless test of the browser game's logic layer (no DOM/canvas needed).
-// Loads utils.js + data.js + engine.js into one scope and exercises combat.
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
+// Headless test of the browser game's logic layer (build system, gear, party).
+const fs=require("fs"), path=require("path"), vm=require("vm");
+const base=path.join(__dirname,"..","web","js");
+const src=["utils.js","data.js","engine.js","save.js"]
+  .map(f=>fs.readFileSync(path.join(base,f),"utf8")).join("\n");
+const ctx={Math,JSON,console}; vm.createContext(ctx);
+vm.runInContext(src+"\nthis.__api={Player,makeEnemy,makeSummon,makeAlly,applyAbility,tickStatusStart,tickStatusEnd,aiChoose,rollDrops,ABILITIES,CLASSES,SCHOOLS,GEAR,ITEMS,ENEMIES,SUMMONS,MAX_RANK,playerToObj,objToPlayer};",ctx);
+const A=ctx.__api;
+let pass=0,fail=0;
+function ok(n,c){ if(c){pass++;console.log("PASS  "+n);} else {fail++;console.log("FAIL  "+n);} }
+function mockBattle(party,enemies){ return {party,enemies,
+  side(s){return s==="party"?this.party:this.enemies;},
+  living(s){return this.side(s).filter(e=>e.alive);},
+  addSummon(e){this.party.push(e);},
+  log(){},onHit(){},onHeal(){},onDeath(){},onStatus(){}}; }
 
-const base = path.join(__dirname, "..", "web", "js");
-const src = ["utils.js", "data.js", "engine.js"]
-  .map(f => fs.readFileSync(path.join(base, f), "utf8")).join("\n");
-
-const ctx = { Math, JSON, console };
-vm.createContext(ctx);
-vm.runInContext(src + "\nthis.__api={Player,makeEnemy,makeSummon,applyAbility,tickStatusStart,tickStatusEnd,aiChoose,ABILITIES,CLASSES,ENEMIES,SUMMONS,STATUSES};", ctx);
-const API = ctx.__api;
-
-let pass = 0, fail = 0;
-function ok(name, cond){ if(cond){ pass++; console.log("PASS  "+name); } else { fail++; console.log("FAIL  "+name); } }
-
-// mock battle providing the hooks the engine calls
-function mockBattle(party, enemies){
-  return {
-    party, enemies, heroLevel: 5,
-    side(s){ return s==="party"?this.party:this.enemies; },
-    living(s){ return this.side(s).filter(e=>e.alive); },
-    addSummon(e){ this.party.push(e); },
-    log(){}, onHit(){}, onHeal(){}, onDeath(){}, onStatus(){},
-  };
-}
-
-// 1. content integrity: every referenced ability key exists
-(function(){
-  let bad=[];
-  for(const k in API.CLASSES){ const c=API.CLASSES[k];
-    c.start.forEach(a=>{ if(!API.ABILITIES[a]) bad.push(k+":"+a); });
-    Object.values(c.unlocks).forEach(arr=>arr.forEach(a=>{ if(!API.ABILITIES[a]) bad.push(k+":"+a); }));
-  }
-  for(const k in API.ENEMIES){ API.ENEMIES[k].ab.forEach(a=>{ if(!API.ABILITIES[a]) bad.push(k+":"+a); }); }
-  for(const k in API.SUMMONS){ API.SUMMONS[k].ab.forEach(a=>{ if(!API.ABILITIES[a]) bad.push(k+":"+a); }); }
-  ok("all ability references valid ("+(bad.join(",")||"none")+")", bad.length===0);
-  ok("six playable classes", Object.keys(API.CLASSES).length===6);
+// 1. content integrity
+(function(){ let bad=[];
+  const slots={weapon:1,armor:1,accessory:1};
+  for(const k in A.CLASSES) for(const sc in A.CLASSES[k].startRanks) if(!A.SCHOOLS[sc]) bad.push("class "+k+" school "+sc);
+  for(const k in A.ABILITIES){ const a=A.ABILITIES[k]; if(a.school!=="_"&&!A.SCHOOLS[a.school]) bad.push("ability "+k+" school "+a.school); }
+  for(const k in A.ENEMIES){ A.ENEMIES[k].ab.forEach(a=>{ if(!A.ABILITIES[a]) bad.push("enemy "+k+" ab "+a); });
+    (A.ENEMIES[k].drops||[]).forEach(d=>{ if(!A.GEAR[d.key]) bad.push("enemy "+k+" drop "+d.key); }); }
+  for(const k in A.SUMMONS) A.SUMMONS[k].ab.forEach(a=>{ if(!A.ABILITIES[a]) bad.push("summon "+k+" ab "+a); });
+  for(const k in A.GEAR) if(!slots[A.GEAR[k].slot]) bad.push("gear "+k+" slot");
+  for(const k in A.ITEMS) if(A.ITEMS[k].kind==="scroll"&&!A.ABILITIES[A.ITEMS[k].ability]) bad.push("scroll "+k);
+  ok("content integrity ("+(bad.join(";")||"clean")+")", bad.length===0);
+  ok("six origins, ten schools", Object.keys(A.CLASSES).length===6 && Object.keys(A.SCHOOLS).length===10);
 })();
 
-// 2. leveling unlocks + stat growth
-(function(){
-  const p=new API.Player("T", API.CLASSES.overlord);
-  const hp0=p.maxHp, ab0=p.abilityKeys.length;
-  for(let i=0;i<12;i++) p.gainXp(p.xpNext);
-  ok("overlord reaches L13+", p.level>=13);
-  ok("hp grew on level up", p.maxHp>hp0);
-  ok("learned new abilities", p.abilityKeys.length>ab0);
-  ok("super-tier unlocked", p.abilityKeys.includes("goal_of_death"));
+// 2. leveling grants points (no auto-unlock)
+(function(){ const p=new A.Player("T",A.CLASSES.overlord);
+  p.levelUp(); ok("level up grants 3 skill + 3 attr", p.skillPoints===3 && p.attrPoints===3);
 })();
 
-// 3. resistance math (skeleton: Holy x1.6 weak, Poison x0 immune)
-(function(){
-  const s=API.makeEnemy("skeleton",3);
-  const holy=s.takeDamage(100,"Holy",0);
-  const s2=API.makeEnemy("skeleton",3);
-  const pois=s2.takeDamage(100,"Poison",0);
-  ok("holy damage applies (>0)", holy.dmg>0);
-  ok("poison immunity floors at 1", pois.dmg===1);
+// 3. spending skill points unlocks abilities by school rank
+(function(){ const p=new A.Player("T",A.CLASSES.overlord);
+  ok("start knows magic_arrow (arcane1)", p.knows("magic_arrow"));
+  ok("start does NOT know create_undead (necro 2 < req3)", !p.knows("create_undead"));
+  p.skillPoints=1; p.spendSkill("necromancy"); // necro 2 -> 3
+  ok("necromancy rank 3 unlocks create_undead", p.knows("create_undead"));
+  ok("still locked: goal_of_death (rank3 < req5)", !p.knows("goal_of_death"));
 })();
 
-// 4. status DoT ticks reduce HP and expire
-(function(){
-  const g=API.makeEnemy("goblin",1); const b=mockBattle([],[g]);
-  g.addStatus("poison",3,10,b);
-  const before=g.hp; API.tickStatusStart(g,b);
-  ok("poison DoT damages", g.hp<before);
-  API.tickStatusEnd(g,b);
-  ok("status duration decrements", g.statuses[0].dur===2);
+// 4. school passive raises a stat
+(function(){ const p=new A.Player("T",A.CLASSES.overlord); const m0=p.eff("mag");
+  p.skillPoints=2; p.spendSkill("necromancy"); p.spendSkill("arcane");
+  ok("school ranks raise MAG", p.eff("mag")>m0);
 })();
 
-// 5. summon joins party
-(function(){
-  const p=new API.Player("Ainz", API.CLASSES.overlord);
-  for(let i=0;i<3;i++) p.levelUp(); // L4 -> create_undead
-  const b=mockBattle([p],[API.makeEnemy("troll",4)]);
-  ok("create_undead unlocked at L4", p.abilityKeys.includes("create_undead"));
-  API.applyAbility(p,"create_undead",[p],b);
-  ok("summon added to party", b.party.length===2 && b.party[1].isSummon);
+// 5. gear equip changes stats & max HP
+(function(){ const p=new A.Player("T",A.CLASSES.vampire); const atk0=p.eff("atk"), hp0=p.maxHp;
+  p.addGear("war_axe",1); p.equipItem("war_axe");
+  ok("weapon raises ATK", p.eff("atk")===atk0+20);
+  p.addGear("plate_armor",1); p.equipItem("plate_armor");
+  ok("armor raises max HP", p.maxHp===hp0+80);
 })();
 
-// 6. full auto-battle: each class beats a single same-ish enemy with a level lead
-(function(){
-  for(const key in API.CLASSES){
-    const p=new API.Player("Hero", API.CLASSES[key]);
-    for(let i=0;i<5;i++) p.levelUp();
-    const enemy=API.makeEnemy("goblin",2);
-    const b=mockBattle([p],[enemy]);
-    let guard=0, won=false;
-    while(guard++<200){
-      if(!enemy.alive){ won=true; break; }
-      // hero acts: strongest offensive usable, else strike
-      const off=p.usable().filter(o=>o.ab.target==="one_enemy"||o.ab.target==="all_enemies");
-      const choice = off.length? off.reduce((a,x)=>x.ab.mp>a.ab.mp?x:a) : {key:"strike"};
-      const tg = API.ABILITIES[choice.key].target==="all_enemies"?[enemy]:[enemy];
-      API.applyAbility(p, choice.key, tg, b);
-      API.tickStatusEnd(p,b);
-      if(!enemy.alive) { won=true; break; }
-      // enemy acts
-      API.tickStatusStart(enemy,b);
-      if(enemy.alive){ const a=API.aiChoose(enemy,b); if(a) API.applyAbility(enemy,a.key,a.targets,b); }
-      API.tickStatusEnd(enemy,b);
-      if(!p.alive) break;
-    }
-    ok(key+" wins basic fight", won);
-  }
+// 6. attribute point raises base stat
+(function(){ const p=new A.Player("T",A.CLASSES.frost); const a0=p.base.atk;
+  p.attrPoints=1; p.spendAttr("atk"); ok("attribute point raises ATK", p.base.atk===a0+3);
 })();
 
-console.log("\n"+pass+"/"+(pass+fail)+" checks passed");
-process.exit(fail?1:0);
+// 7. scrolls cast spells without the school (free, no MP)
+(function(){ const p=new A.Player("V",A.CLASSES.vampire); // no necromancy
+  ok("vampire cannot create undead normally", !p.knows("create_undead"));
+  const b=mockBattle([p],[A.makeEnemy("goblin",1)]); const mp0=p.mp;
+  A.applyAbility(p,"create_undead",[p],b,true /*free*/);
+  ok("scroll summon adds ally", b.party.length===2 && b.party[1].isSummon);
+  ok("free cast spends no MP", p.mp===mp0);
+})();
+
+// 8. resistances
+(function(){ const s=A.makeEnemy("skeleton",3); const holy=s.takeDamage(100,"Holy",0);
+  const s2=A.makeEnemy("skeleton",3); const pois=s2.takeDamage(100,"Poison",0);
+  ok("holy hurts skeleton", holy.dmg>0); ok("poison immune floors to 1", pois.dmg===1);
+})();
+
+// 9. status DoT ticks & expires
+(function(){ const g=A.makeEnemy("goblin",1); const b=mockBattle([],[g]); g.addStatus("poison",3,10);
+  const before=g.hp; A.tickStatusStart(g,b); ok("poison damages", g.hp<before);
+  A.tickStatusEnd(g,b); ok("duration decrements", g.statuses[0].dur===2);
+})();
+
+// 10. makeAlly auto-builds a functional character
+(function(){ const a=A.makeAlly("overlord",6);
+  ok("ally at requested level", a.level===6);
+  ok("ally spent its skill points", a.skillPoints===0);
+  ok("ally learned school abilities", a.getAbilityKeys().length>1);
+  ok("ally is alive & full", a.alive && a.hp===a.maxHp);
+})();
+
+// 11. save round-trip preserves build & gear
+(function(){ const p=new A.Player("Saver",A.CLASSES.ranger);
+  p.levelUp(); p.spendSkill("archery"); p.spendAttr("atk");
+  p.addGear("elven_bow",1); p.equipItem("elven_bow");
+  const atk=p.eff("atk"), rank=p.schoolRanks.archery, lvl=p.level;
+  const p2=A.objToPlayer(A.playerToObj(p));
+  ok("save preserves level", p2.level===lvl);
+  ok("save preserves school rank", p2.schoolRanks.archery===rank);
+  ok("save preserves equipped gear", p2.equip.weapon==="elven_bow");
+  ok("save preserves derived ATK", p2.eff("atk")===atk);
+})();
+
+// 12. every origin (auto-built to L6) wins a basic fight
+(function(){ for(const key in A.CLASSES){
+  const p=A.makeAlly(key,6); const enemy=A.makeEnemy("goblin",2); const b=mockBattle([p],[enemy]);
+  let guard=0, won=false;
+  while(guard++<300){ if(!enemy.alive){won=true;break;}
+    const off=p.usable().filter(o=>o.ab.target==="one_enemy"||o.ab.target==="all_enemies");
+    const c=off.length?off.reduce((a,x)=>x.ab.mp>a.ab.mp?x:a):{key:"strike"};
+    A.applyAbility(p,c.key,[enemy],b); A.tickStatusEnd(p,b);
+    if(!enemy.alive){won=true;break;}
+    A.tickStatusStart(enemy,b); if(enemy.alive){ const a=A.aiChoose(enemy,b); if(a) A.applyAbility(enemy,a.key,a.targets,b); }
+    A.tickStatusEnd(enemy,b); if(!p.alive) break; }
+  ok(key+" wins basic fight", won);
+} })();
+
+console.log("\n"+pass+"/"+(pass+fail)+" checks passed"); process.exit(fail?1:0);

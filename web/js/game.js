@@ -38,6 +38,8 @@ function spriteCard(key, color, scale){
   drawSprite(cv.getContext("2d"), key, 48, 86, scale||2.4, {color:color}); return cv;
 }
 function pointsPending(){ return party.some(p=>p.skillPoints>0||p.attrPoints>0); }
+// window.confirm/prompt throw in Electron; wrap so the game still works there.
+function safeConfirm(msg){ try{ return window.confirm ? window.confirm(msg) : true; }catch(e){ return true; } }
 
 // ---------- audio mute ----------
 muteBtn.onclick=()=>{ Audio2.setEnabled(!Audio2.enabled); muteBtn.textContent=Audio2.enabled?"🔊":"🔇"; };
@@ -375,11 +377,19 @@ function renderClassDetail(){
   box.appendChild(el("div",null,cc.desc));
   box.appendChild(el("div","stats","HP "+s.hp+" · MP "+s.mp+" · ATK "+s.atk+" · MAG "+s.mag+" · DEF "+s.def+" · RES "+s.res+" · SPD "+s.spd+" · CRIT "+Math.round(s.crit*100)+"%"));
   box.appendChild(el("div","ablist","<b>Starting schools:</b> "+Object.keys(cc.startRanks).map(k=>SCHOOLS[k].name+" "+cc.startRanks[k]).join(", ")));
+  const nameRow=el("div","namerow");
+  nameRow.appendChild(el("label",null,"Name: "));
+  const input=document.createElement("input");
+  input.id="charname"; input.type="text"; input.value=cc.title; input.maxLength=24; input.className="nameinput";
+  input.addEventListener("keydown", e=>{ if(e.key==="Enter") beginGame(cc); });
+  nameRow.appendChild(input);
+  box.appendChild(nameRow);
   d.appendChild(box);
   const start=el("button","primary","Begin as "+cc.name+" →"); start.onclick=()=>beginGame(cc); d.appendChild(start);
 }
 function beginGame(cc){
-  const nm=(window.prompt&&window.prompt("Name your "+cc.name+":", cc.title))||cc.title;
+  const field=document.getElementById("charname");
+  const nm=(field && field.value && field.value.trim()) || cc.title;
   hero=new Player(nm, cc); party=[hero];
   account={gold:50, inv:{potion:3, ether:2, phoenix:1}, gearInv:{}};
   progress={chapter:0, wins:0, completed:false};
@@ -495,7 +505,7 @@ function showParty(){
     chip.appendChild(spriteCard(p.cls.sprite,p.cls.color,1.2));
     chip.appendChild(el("span","sn","<b>"+p.name+"</b> — L"+p.level+" "+p.cls.name+(p===hero?" <span class='pill'>leader</span>":"")));
     row.appendChild(chip);
-    if(p!==hero){ const dm=el("button","danger","Dismiss"); dm.onclick=()=>{ if(confirm("Dismiss "+p.name+"?")){ party=party.filter(x=>x!==p); saveGame(party,progress,account); showParty(); } }; row.appendChild(dm); }
+    if(p!==hero){ const dm=el("button","danger","Dismiss"); dm.onclick=()=>{ if(safeConfirm("Dismiss "+p.name+"?")){ party=party.filter(x=>x!==p); saveGame(party,progress,account); showParty(); } }; row.appendChild(dm); }
     list.appendChild(row); });
   ui.appendChild(list);
   if(party.length<PARTY_MAX){

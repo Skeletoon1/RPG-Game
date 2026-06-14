@@ -87,6 +87,10 @@ button.danger{background:linear-gradient(180deg,#a33,#722)}
   margin:8px 0;font-variant-numeric:tabular-nums}
 .detail .ablist{color:var(--muted)}
 .kbd{color:var(--gold)}
+.namerow{display:flex;align-items:center;gap:8px;margin-top:10px}
+.nameinput{flex:1;font-family:inherit;font-size:15px;color:var(--ink);
+  background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.nameinput:focus{outline:none;border-color:var(--accent);box-shadow:0 0 12px rgba(160,90,255,.4)}
 
 /* ---- top bar ---- */
 #topbar{position:absolute;top:0;left:0;right:0;display:flex;gap:14px;

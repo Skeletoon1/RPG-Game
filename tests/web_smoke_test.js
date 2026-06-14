@@ -37,7 +37,11 @@ function AudioContextStub(){ return {currentTime:0,state:"running",sampleRate:44
   createBiquadFilter:()=>({type:"",frequency:{value:0},connect(){}}), resume(){} }; }
 const store={};
 const localStorage={ getItem:k=>store[k]||null, setItem:(k,v)=>{store[k]=v;}, removeItem:k=>{delete store[k];} };
-const window={ AudioContext:AudioContextStub, prompt:()=>"Tester", localStorage, addEventListener(){}, devicePixelRatio:2 };
+// Electron does NOT support window.prompt/confirm — they throw. Mimic that so
+// any reliance on them fails the test.
+function electronUnsupported(){ throw new Error("prompt()/confirm() is and will not be supported by Electron"); }
+const window={ AudioContext:AudioContextStub, prompt:electronUnsupported, confirm:electronUnsupported,
+  localStorage, addEventListener(){}, devicePixelRatio:2 };
 
 const ctx={ Math,JSON,console,document,window,localStorage,
   AudioContext:AudioContextStub, prompt:window.prompt, confirm:()=>true,
@@ -60,7 +64,9 @@ const G=ctx.__g;
 tryStep("render loop tick (menu)", ()=>G.loop(16));
 tryStep("show help screen", ()=>G.showHelp());
 tryStep("show class select", ()=>G.showClassSelect());
-tryStep("begin game (creates hero/party/account)", ()=>G.beginGame(G.CLASSES.overlord));
+tryStep("class detail renders (name input, no window.prompt)", ()=>{
+  vm.runInContext("selClass=CLASSES.overlord; renderClassDetail();", ctx); });
+tryStep("begin game (no window.prompt/confirm — Electron-safe)", ()=>G.beginGame(G.CLASSES.overlord));
 tryStep("town hub", ()=>G.showTown());
 tryStep("build screen", ()=>G.showBuild());
 tryStep("equipment screen", ()=>G.showEquip());

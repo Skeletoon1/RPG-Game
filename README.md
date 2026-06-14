@@ -6,11 +6,24 @@ rulers, master your class abilities, and conquer all five chapters of the campai
 
 Pure Python 3, **no dependencies**. Just run it.
 
+**Windows** (Command Prompt or PowerShell — note: use `py`, **not** `python3`,
+which on Windows is often a do-nothing Microsoft Store stub):
+```
+cd path\to\RPG-Game
+py play.py
+```
+…or simply **double-click `play.bat`**.
+
+**macOS / Linux:**
 ```bash
 python3 play.py
 #   or
 python3 -m overlord_rpg
 ```
+
+First check Python is installed: `py --version` (Windows) or `python3 --version`
+(macOS/Linux). If it's missing, install from <https://www.python.org/downloads/>
+and on Windows tick **"Add Python to PATH"**.
 
 > Best experienced in a real terminal (for colors, animation, and input).
 > Running with piped/non-interactive input plays an automated demo battle.

@@ -20,6 +20,9 @@ html,body{margin:0;height:100%;background:#05030a;color:var(--ink);overflow:hidd
 
 #mute{position:absolute;top:8px;right:8px;z-index:20;padding:6px 9px;font-size:14px;
   border-radius:8px;background:rgba(10,6,18,.7)}
+#autobtn{position:absolute;top:8px;left:8px;z-index:20;padding:6px 9px;font-size:13px;
+  border-radius:8px;background:rgba(10,6,18,.7)}
+#autobtn.on{background:linear-gradient(180deg,#7a3dd6,#4d1f9e);border-color:#9a5dff;color:#fff}
 
 /* build / equip / party rows */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(96%,860px)}

@@ -12,7 +12,9 @@ const actionsEl=document.getElementById("actions");
 const submenuEl=document.getElementById("submenu");
 const topbar=document.getElementById("topbar");
 const muteBtn=document.getElementById("mute");
+const autoBtn=document.getElementById("autobtn");
 
+let autoMode=false;   // party-wide auto-battle; toggle any time
 let state="title";
 let party=[], hero=null, account=null, progress=null, battle=null;
 let bgKey="menu";
@@ -44,6 +46,8 @@ function safeConfirm(msg){ try{ return window.confirm ? window.confirm(msg) : tr
 // ---------- audio mute ----------
 muteBtn.onclick=()=>{ Audio2.setEnabled(!Audio2.enabled); muteBtn.textContent=Audio2.enabled?"🔊":"🔇"; };
 document.addEventListener("pointerdown", ()=>Audio2.ensure(), {once:false});
+function updateAutoBtn(){ autoBtn.textContent="🤖 Auto: "+(autoMode?"ON":"OFF"); autoBtn.classList.toggle("on", autoMode); }
+autoBtn.onclick=()=>{ autoMode=!autoMode; updateAutoBtn(); Audio2.select(); };
 
 // ============================================================================
 //  RENDER LOOP
@@ -152,6 +156,7 @@ function uiPrompt(setup){ return new Promise(res=>{ resolver=res; setup(v=>{ res
 
 async function startBattle(enemies, canFlee, isBoss){
   battle=makeBattle(enemies, canFlee); layoutBattle();
+  autoMode=false; updateAutoBtn(); show(autoBtn);
   state="battle"; hide(ui); show(battleUI); show(topbar); renderLog(); updateTopbar();
   Audio2.startMusic(isBoss?"boss":"battle");
   await battleLoop();
@@ -175,7 +180,7 @@ async function takeTurn(u){
   if(u.isStunned()){ const s=u.statuses.find(x=>STATUSES[x.key].blocks);
     battle.log(u.name+" is "+STATUSES[s.key].name+" and cannot act!");
     spawnFloat(u.x,u.y-u.spriteScale*40,STATUSES[s.key].icon,STATUSES[s.key].color,22); await wait(480); tickStatusEnd(u,battle); return; }
-  if(u.isPlayerChar && !u.autoAI){ await playerTurn(u); }
+  if(u.isPlayerChar && !autoMode){ await playerTurn(u); }
   else { const a=aiChoose(u,battle); if(a){ battle.log(u.name+" uses "+ABILITIES[a.key].name+".");
     await animate(u, a.key, a.targets); } }
   tickStatusEnd(u, battle); updateTopbar(); await wait(160);
@@ -198,7 +203,7 @@ async function playerTurn(unit){
     if(act==="item"){ const used=await chooseItem(unit); if(used) return; else continue; }
     if(act==="defend"){ unit.defending=true; battle.log(unit.name+" takes a defensive stance.");
       spawnFloat(unit.x,unit.y-unit.spriteScale*40,STATUSES.defUp.icon,"#8ab6ff",18); Audio2.buff(); await wait(320); return; }
-    if(act==="auto"){ unit.autoAI=true; battle.log(unit.name+" will now fight automatically.");
+    if(act==="auto"){ autoMode=true; updateAutoBtn(); battle.log("Auto-battle ON. Toggle it off any time (top-left 🤖).");
       const a=aiChoose(unit,battle); if(a){ battle.log(unit.name+" uses "+ABILITIES[a.key].name+"."); await animate(unit,a.key,a.targets); } return; }
     if(act==="flee"){ await tryFlee(unit); return; }
   }
@@ -285,7 +290,7 @@ async function tryFlee(unit){
 }
 
 async function finishBattle(){
-  hide(submenuEl); clear(actionsEl); selecting=null; await wait(300);
+  hide(submenuEl); clear(actionsEl); selecting=null; hide(autoBtn); await wait(300);
   const fled=battle.fled, partyDead=!battle.living("party").length;
   // strip summons
   battle.party=battle.party.filter(e=>!e.isSummon);

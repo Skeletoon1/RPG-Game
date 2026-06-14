@@ -44,12 +44,13 @@ async function main(){
     for(let t=0;t<schools.length&&!placed;t++){ if(s.hero.spendSkill(schools[(si++)%schools.length])) placed=true; }
     if(!placed) break; }
   while(s.hero.attrPoints>0){ if(!s.hero.spendAttr("mag")) break; }
-  s.hero.autoAI=true; s.hero.fullRestore();
-  const ally=ctx.makeAlly("vampire",5); ally.autoAI=true; s.party.push(ally);
+  s.hero.fullRestore();
+  const ally=ctx.makeAlly("vampire",5); s.party.push(ally);
   ok("party has 2 members", s.party.length===2);
 
   const enemies=[ctx.makeEnemy("goblin",1), ctx.makeEnemy("wolf",1)];
   const battlePromise=ctx.startBattle(enemies, false, false);
+  vm.runInContext("autoMode=true;", ctx);   // startBattle resets it; set after so the battle runs headless
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("battle timed out")),8000));
   await Promise.race([battlePromise, timeout]);
   ok("battle ran to completion without throwing", true);

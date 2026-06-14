@@ -30,19 +30,44 @@ function obj() {
     id: _id++, position: new V3(),
     rotation: { x: 0, y: 0, z: 0, set(a, b, c) { this.x = a; this.y = b; this.z = c; } },
     scale: { x: 1, y: 1, z: 1, set(a, b, c) { this.x = a; this.y = b; this.z = c; }, setScalar(s) { this.x = this.y = this.z = s; }, addScalar(s) { this.x += s; this.y += s; this.z += s; } },
-    material: { color: 0, opacity: 1, transparent: false }, children: [],
-    add() { for (const a of arguments) this.children.push(a); }, remove() {}, lookAt() {}, clone() { const o = obj(); o.position.copy(this.position); return o; },
+    material: { color: 0, opacity: 1, transparent: false }, children: [], isMesh: true, userData: {},
+    add() { for (const a of arguments) this.children.push(a); }, remove() {}, lookAt() {},
+    traverse(fn) { fn(this); for (const c of this.children) (c && c.traverse) ? c.traverse(fn) : fn(c); },
+    clone() { const o = obj(); o.position.copy(this.position); return o; },
   };
 }
+function planeGeo() { return { attributes: { position: { count: 4, getX: () => 0, getY: () => 0, setZ() {} } }, computeVertexNormals() {} }; }
+function geoWithH(r, h) { return { parameters: { height: h || 1 } }; }
 const THREE = {
-  Vector3: V3, Group: function () { return obj(); }, Mesh: function (g, m) { const o = obj(); if (m) o.material = m; return o; },
+  Vector3: V3,
+  Group: function () { return obj(); },
+  Mesh: function (g, m) { const o = obj(); o.geometry = g || { parameters: {} }; if (m) o.material = m; return o; },
+  Sprite: function (m) { const o = obj(); o.material = m || { rotation: 0, opacity: 1, transparent: false }; return o; },
+  Points: function () { return obj(); },
   Scene: function () { return { add() {}, remove() {}, background: null, fog: null }; },
   PerspectiveCamera: function () { return { aspect: 1, position: new V3(), updateProjectionMatrix() {}, lookAt() {} }; },
-  WebGLRenderer: function () { return { setPixelRatio() {}, setSize() {}, render() {} }; },
-  Color: function () {}, Fog: function () {}, HemisphereLight: function () { return obj(); }, DirectionalLight: function () { return obj(); },
-  BoxGeometry: function () {}, SphereGeometry: function () {}, ConeGeometry: function () {}, CylinderGeometry: function () {},
-  PlaneGeometry: function () {}, CircleGeometry: function () {}, DodecahedronGeometry: function () {}, TorusGeometry: function () {},
+  WebGLRenderer: function () { return { setPixelRatio() {}, setSize() {}, render() {}, shadowMap: { enabled: false, type: 0 }, outputEncoding: 0 }; },
+  Color: function () { return { copy() { return this; }, set() { return this; } }; },
+  Fog: function () {}, FogExp2: function () {},
+  HemisphereLight: function () { return obj(); },
+  DirectionalLight: function () { const o = obj(); o.castShadow = false; o.shadow = { mapSize: { set() {} }, camera: {} }; return o; },
+  PointLight: function () { const o = obj(); o.intensity = 1; o.distance = 0; return o; },
+  BoxGeometry: function () { return {}; }, SphereGeometry: function () { return {}; },
+  ConeGeometry: function (r, h) { return geoWithH(r, h); }, CylinderGeometry: function () { return {}; },
+  PlaneGeometry: function () { return planeGeo(); }, CircleGeometry: function () { return {}; },
+  DodecahedronGeometry: function () { return {}; }, TorusGeometry: function () { return {}; },
+  OctahedronGeometry: function () { return {}; }, RingGeometry: function () { return {}; },
+  BufferGeometry: function () { return { setAttribute() {}, attributes: {}, computeVertexNormals() {} }; },
+  BufferAttribute: function () { return {}; },
+  CanvasTexture: function () { return {}; },
+  DataTexture: function () { return { needsUpdate: false, minFilter: 0, magFilter: 0 }; },
+  ShaderMaterial: function (o) { return Object.assign({ uniforms: {} }, o); },
+  MeshToonMaterial: function (o) { return { color: (o && o.color) || 0, emissive: 0, emissiveIntensity: 1, opacity: 1, transparent: false, gradientMap: null }; },
+  MeshBasicMaterial: function (o) { return Object.assign({ color: 0, opacity: 1, transparent: false }, o); },
   MeshLambertMaterial: function (o) { return { color: (o && o.color) || 0, opacity: 1, transparent: false }; },
+  SpriteMaterial: function (o) { return Object.assign({ rotation: 0, opacity: 1, transparent: false }, o); },
+  PointsMaterial: function (o) { return o || {}; },
+  AdditiveBlending: 2, BackSide: 1, DoubleSide: 2, NearestFilter: 3, RedFormat: 1, PCFSoftShadowMap: 1,
   Clock: function () { return { getDelta() { return 0.016; } }; },
   MathUtils: { clamp: (v, a, b) => Math.max(a, Math.min(b, v)), randFloat: (a, b) => a + Math.random() * (b - a), randFloatSpread: s => (Math.random() - 0.5) * s },
 };
@@ -55,7 +80,11 @@ function elMock() {
     style: {}, _children: [], onclick: null, firstChild: { style: {} },
     set innerHTML(v) {}, set textContent(v) {}, get textContent() { return ""; },
     appendChild(c) { this._children.push(c); return c; }, remove() {}, matches() { return false; },
-    addEventListener() {}, requestPointerLock() {}, getContext() { return {}; }, querySelector() { return elMock(); },
+    addEventListener() {}, requestPointerLock() {}, querySelector() { return elMock(); },
+    getContext(type) {
+      if (type === "2d") return { createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), fillRect() {}, fillText() {}, set fillStyle(v) {}, set font(v) {} };
+      return {};
+    },
   };
 }
 const els = {};

@@ -1,7 +1,7 @@
 {
   "name": "overlord-rpg",
   "productName": "Overlord RPG",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Overlord RPG — Nazarick Rising: a turn-based RPG inspired by the Overlord light novel/anime.",
   "author": "Nazarick",
   "license": "MIT",
@@ -13,6 +13,9 @@
     "dist:mac": "electron-builder --mac --publish never",
     "dist:linux": "electron-builder --linux --publish never"
   },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
   "devDependencies": {
     "electron": "^31.7.0",
     "electron-builder": "^24.13.3"
@@ -20,6 +23,7 @@
   "build": {
     "appId": "com.nazarick.overlordrpg",
     "productName": "Overlord RPG",
+    "asar": true,
     "files": [
       "electron/**/*",
       "web/**/*",
@@ -27,6 +31,12 @@
     ],
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Skeletoon1",
+      "repo": "RPG-Game",
+      "releaseType": "release"
     },
     "win": {
       "target": "nsis",

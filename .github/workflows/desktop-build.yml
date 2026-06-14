@@ -1,19 +1,20 @@
 name: Build desktop apps
 
-# Builds installable desktop apps (Windows .exe, macOS .dmg, Linux .AppImage)
-# and uploads them as downloadable artifacts. Run automatically on relevant
-# pushes, or manually from the Actions tab ("Run workflow").
+# - On a normal push to the dev branch: build installers and upload them as
+#   downloadable artifacts (for testing).
+# - On a version tag (e.g. v1.0.1): build AND publish a GitHub Release with the
+#   installers + auto-update metadata, which the app uses to update itself.
 
 on:
   workflow_dispatch: {}
   push:
     branches:
       - claude/overlord-rpg-game-djt7dc
-    paths:
-      - "web/**"
-      - "electron/**"
-      - "package.json"
-      - ".github/workflows/desktop-build.yml"
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed to create the GitHub Release on tags
 
 jobs:
   build:
@@ -35,13 +36,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build installer
-        run: npm run dist
+      - name: Build (and publish a Release on version tags)
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUB=always; else PUB=never; fi
+          echo "Publish mode: $PUB"
+          npx electron-builder --publish "$PUB"
         env:
-          # Don't fail just because the build isn't code-signed.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - name: Upload installer
+      - name: Upload installer (test builds only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: OverlordRPG-${{ matrix.os }}

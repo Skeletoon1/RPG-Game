@@ -50,6 +50,12 @@ window, app icon, no browser needed).
 
 If no run exists yet, go to **Actions → Build desktop apps → Run workflow**.
 
+**Automatic updates:** the desktop app checks GitHub Releases on launch and
+updates itself — install it once and you'll never re-download manually. New
+releases are published automatically when a version tag (e.g. `v1.0.2`) is
+pushed. Only the repository owner can push tags / publish releases, so the
+official game can't be altered by anyone else.
+
 **Build it yourself (needs Node.js):**
 ```bash
 npm install

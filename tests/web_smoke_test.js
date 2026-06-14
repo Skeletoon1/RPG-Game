@@ -7,7 +7,7 @@ const base=path.join(__dirname,"..","web","js");
 
 // ---- mocks ----
 function mockCtx(){ const n=()=>{};
-  return {save:n,restore:n,translate:n,scale:n,rotate:n,beginPath:n,closePath:n,moveTo:n,lineTo:n,
+  return {save:n,restore:n,translate:n,scale:n,rotate:n,setTransform:n,beginPath:n,closePath:n,moveTo:n,lineTo:n,
     ellipse:n,arc:n,fill:n,stroke:n,quadraticCurveTo:n,fillRect:n,strokeRect:n,fillText:n,strokeText:n,
     createLinearGradient:()=>({addColorStop:n}), measureText:()=>({width:10}),
     set fillStyle(v){}, set strokeStyle(v){}, set lineWidth(v){}, set globalAlpha(v){},
@@ -37,7 +37,7 @@ function AudioContextStub(){ return {currentTime:0,state:"running",sampleRate:44
   createBiquadFilter:()=>({type:"",frequency:{value:0},connect(){}}), resume(){} }; }
 const store={};
 const localStorage={ getItem:k=>store[k]||null, setItem:(k,v)=>{store[k]=v;}, removeItem:k=>{delete store[k];} };
-const window={ AudioContext:AudioContextStub, prompt:()=>"Tester", localStorage };
+const window={ AudioContext:AudioContextStub, prompt:()=>"Tester", localStorage, addEventListener(){}, devicePixelRatio:2 };
 
 const ctx={ Math,JSON,console,document,window,localStorage,
   AudioContext:AudioContextStub, prompt:window.prompt, confirm:()=>true,

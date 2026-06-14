@@ -4,7 +4,7 @@
 const fs=require("fs"), path=require("path"), vm=require("vm");
 const base=path.join(__dirname,"..","web","js");
 
-function mockCtx(){ const n=()=>{}; return {save:n,restore:n,translate:n,scale:n,rotate:n,beginPath:n,closePath:n,
+function mockCtx(){ const n=()=>{}; return {save:n,restore:n,translate:n,scale:n,rotate:n,setTransform:n,beginPath:n,closePath:n,
   moveTo:n,lineTo:n,ellipse:n,arc:n,fill:n,stroke:n,quadraticCurveTo:n,fillRect:n,strokeRect:n,fillText:n,strokeText:n,
   createLinearGradient:()=>({addColorStop:n}),measureText:()=>({width:10}),
   set fillStyle(v){},set strokeStyle(v){},set lineWidth(v){},set globalAlpha(v){},set font(v){},set textAlign(v){},set shadowColor(v){},set shadowBlur(v){}}; }
@@ -21,7 +21,7 @@ function AC(){ return {currentTime:0,state:"running",sampleRate:44100,destinatio
   createBuffer:(c,n)=>({getChannelData:()=>new Float32Array(n)}),createBufferSource:()=>({connect(){},start(){},buffer:null}),
   createBiquadFilter:()=>({type:"",frequency:{value:0},connect(){}}),resume(){}}; }
 const store={}; const localStorage={getItem:k=>store[k]||null,setItem:(k,v)=>{store[k]=v;},removeItem:k=>{delete store[k];}};
-const window={AudioContext:AC,prompt:()=>"Hero",localStorage};
+const window={AudioContext:AC,prompt:()=>"Hero",localStorage,addEventListener(){},devicePixelRatio:2};
 // fast timers so the battle resolves quickly; no rAF/music loops
 const ctx={Math,JSON,console,document,window,localStorage,AudioContext:AC,prompt:window.prompt,confirm:()=>true,
   requestAnimationFrame:()=>0, setTimeout:(f)=>setTimeout(f,0), clearTimeout:(h)=>clearTimeout(h),

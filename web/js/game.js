@@ -17,6 +17,20 @@ let state="title";
 let party=[], hero=null, account=null, progress=null, battle=null;
 let bgKey="menu";
 let floats=[], particles=[], shakeT=0, selecting=null, lastT=0;
+let SX=1, SY=1, _cw=0, _ch=0;   // canvas pixel scale (logical 800x450 -> device px)
+
+// Size the canvas backing store to its on-screen size * devicePixelRatio so the
+// vector art renders crisply at any window size. Logical coords stay 800x450.
+function resizeCanvas(){
+  const r=canvas.getBoundingClientRect();
+  if(r.width===_cw && r.height===_ch) return;
+  _cw=r.width; _ch=r.height;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.max(1, Math.round(r.width*dpr));
+  canvas.height=Math.max(1, Math.round(r.height*dpr));
+  SX=canvas.width/W; SY=canvas.height/H;
+}
+window.addEventListener("resize", resizeCanvas);
 
 // ---------- helpers ----------
 function spriteCard(key, color, scale){
@@ -34,6 +48,8 @@ document.addEventListener("pointerdown", ()=>Audio2.ensure(), {once:false});
 // ============================================================================
 function loop(t){
   const dt=Math.min(0.05,(t-lastT)/1000)||0; lastT=t;
+  resizeCanvas();
+  ctx.setTransform(SX,0,0,SY,0,0);   // map logical 800x450 onto the device-pixel canvas
   ctx.save();
   if(shakeT>0){ ctx.translate((Math.random()-.5)*shakeT*14,(Math.random()-.5)*shakeT*14); shakeT-=dt*4; }
   drawBackground(ctx, bgKey, W, H, t);

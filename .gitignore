@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+.overlord_rpg_save.json
+*.save.json
+.pytest_cache/
+.DS_Store

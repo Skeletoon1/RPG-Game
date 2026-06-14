@@ -347,6 +347,7 @@ function showTitle(){
   cb.onclick=()=>{ const l=loadGame(); if(l){ party=l.party; hero=party[0]; progress=l.progress; account=l.account; showTown("Welcome back, "+hero.name+"."); } };
   menu.appendChild(cb);
   const hb=el("button","ghost","？  How to Play"); hb.onclick=showHelp; menu.appendChild(hb);
+  const d3=el("button",null,"🌐  3D Adventure (beta)"); d3.onclick=()=>{ window.location.href="world3d.html"; }; menu.appendChild(d3);
   ui.appendChild(menu);
 }
 function showHelp(){

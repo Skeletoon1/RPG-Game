@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlord RPG — 3D Adventure (beta)</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0712;overflow:hidden;
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;color:#ece6ff;}
+  #c3d{position:fixed;inset:0;display:block}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .bar{position:absolute;left:14px;height:16px;width:240px;border:1px solid #3a2a5e;
+    border-radius:8px;background:rgba(8,5,16,.6);overflow:hidden}
+  #hpbar{top:14px} #mpbar{top:36px;height:12px}
+  #hpfill{height:100%;width:100%;background:linear-gradient(90deg,#46e08a,#2bbf6a)}
+  #mpfill{height:100%;width:100%;background:linear-gradient(90deg,#5aa6ff,#3a7fe0)}
+  #stats{position:absolute;left:14px;top:56px;font-size:13px;font-weight:700;
+    text-shadow:0 1px 2px #000}
+  #stats #gold{color:#ffd866}
+  #abilities{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    display:flex;gap:10px}
+  .ab{width:58px;height:58px;border:1px solid #3a2a5e;border-radius:10px;
+    background:rgba(8,5,16,.7);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;font-size:11px;text-align:center;position:relative}
+  .ab .k{position:absolute;top:2px;left:5px;color:#ffd866;font-weight:800;font-size:11px}
+  .ab .cd{position:absolute;inset:0;background:rgba(0,0,0,.6);border-radius:10px;
+    display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+  #crosshair{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;
+    border-radius:50%;background:rgba(255,255,255,.7)}
+  .float{position:absolute;font-weight:900;font-size:18px;text-shadow:0 2px 4px #000;
+    transform:translate(-50%,-50%);white-space:nowrap}
+  .ehp{position:absolute;width:44px;height:5px;border:1px solid #000;border-radius:3px;
+    background:#400;transform:translate(-50%,-50%);overflow:hidden}
+  .ehp i{display:block;height:100%;background:#ff5a6e}
+  .overlay{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;
+    background:radial-gradient(circle at 50% 40%,rgba(40,20,70,.85),rgba(8,5,16,.96))}
+  .overlay.hidden{display:none}
+  h1{font-size:clamp(28px,6vw,52px);margin:0;color:transparent;
+    background:linear-gradient(180deg,#e9c3ff,#9a4dff 60%,#5a2aa0);-webkit-background-clip:text;background-clip:text}
+  .sub{color:#7fe9ff;letter-spacing:3px;margin-top:-6px}
+  .tag{color:#9a8fc0;max-width:560px}
+  button{font-family:inherit;cursor:pointer;color:#ece6ff;pointer-events:auto;
+    background:linear-gradient(180deg,#1f1636,#160f24);border:1px solid #3a2a5e;
+    border-radius:10px;padding:11px 16px;font-size:15px;font-weight:700}
+  button:hover{border-color:#b06bff;box-shadow:0 0 14px rgba(160,90,255,.4)}
+  button.primary{background:linear-gradient(180deg,#7a3dd6,#4d1f9e);border-color:#9a5dff}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:680px}
+  .card{background:linear-gradient(180deg,#1f1636,#160f24);border:1px solid #3a2a5e;
+    border-radius:12px;padding:12px;cursor:pointer;pointer-events:auto}
+  .card:hover{border-color:#ffd866}
+  .card b{display:block} .card span{color:#9a8fc0;font-size:12px}
+  #hint{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);
+    color:#cdb6ff;font-size:13px;text-shadow:0 1px 2px #000;text-align:center}
+  a.back{position:fixed;top:10px;right:12px;z-index:8;pointer-events:auto;font-size:13px;
+    color:#9a8fc0;text-decoration:none;background:rgba(8,5,16,.7);border:1px solid #3a2a5e;
+    border-radius:8px;padding:6px 10px}
+</style>
+</head>
+<body>
+<canvas id="c3d"></canvas>
+<div id="hud" class="hidden">
+  <div class="bar" id="hpbar"><div id="hpfill"></div></div>
+  <div class="bar" id="mpbar"><div id="mpfill"></div></div>
+  <div id="stats"></div>
+  <div id="crosshair"></div>
+  <div id="abilities"></div>
+  <div id="hint">WASD move · mouse look · Left-click attack · 1/2/3 abilities · Shift sprint · Esc release mouse</div>
+</div>
+<a class="back" href="index.html">← Menu</a>
+
+<div id="start" class="overlay">
+  <h1>3D ADVENTURE</h1>
+  <div class="sub">NAZARICK · BETA</div>
+  <div class="tag">Real-time action in a 3D world. Choose your guardian, then click the screen to lock the mouse and fight.</div>
+  <div class="cards" id="classcards"></div>
+</div>
+<div id="pause" class="overlay hidden">
+  <h1>Paused</h1>
+  <div class="tag">Mouse released. Click to resume.</div>
+  <button class="primary" id="resumebtn">Resume</button>
+</div>
+<div id="dead" class="overlay hidden">
+  <h1 style="background:linear-gradient(180deg,#ffb3b3,#ff5a6e 60%,#a02a2a)">Defeated</h1>
+  <div class="tag" id="deadmsg"></div>
+  <button class="primary" id="respawnbtn">Respawn</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/world3d.js"></script>
+</body>
+</html>

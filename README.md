@@ -89,6 +89,14 @@ and on Windows tick **"Add Python to PATH"**.
 > Best experienced in a real terminal (for colors, animation, and input).
 > Running with piped/non-interactive input plays an automated demo battle.
 
+### 🌐 3D Adventure (beta)
+
+A separate real-time 3D mode (Three.js, vendored locally — still works offline)
+reachable from the title screen's **"3D Adventure (beta)"** button, or by opening
+`web/world3d.html`. Explore a 3D zone in third-person with **WASD + mouse-look**,
+and fight roaming chibi monsters in **real time** (left-click attack, `1/2/3`
+abilities, Shift to sprint). Early/experimental, built on the same classes.
+
 ---
 
 ## Features

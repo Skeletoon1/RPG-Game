@@ -44,17 +44,20 @@ jobs:
       - name: Build (and publish a Release on version tags)
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* || "$FORCE_PUBLISH" == "true" ]]; then PUB=always; else PUB=never; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* || "$FORCE_PUBLISH" == "true" || "$COMMIT_MSG" == *"[release]"* ]]; then PUB=always; else PUB=never; fi
           echo "Publish mode: $PUB"
           npx electron-builder --publish "$PUB"
-        # FORCE_PUBLISH is set from the manual "publish" input above.
+        # Publishes a Release on: a v* tag, the manual "publish" input, or a
+        # commit message containing [release]. COMMIT_MSG is passed via env to
+        # avoid shell-injection from the commit text.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           FORCE_PUBLISH: ${{ github.event.inputs.publish }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
 
       - name: Upload installer (test builds only)
-        if: ${{ github.event.inputs.publish != 'true' && !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event.inputs.publish != 'true' && !startsWith(github.ref, 'refs/tags/') && !contains(github.event.head_commit.message, '[release]') }}
         uses: actions/upload-artifact@v4
         with:
           name: OverlordRPG-${{ matrix.os }}

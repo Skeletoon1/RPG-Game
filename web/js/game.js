@@ -531,12 +531,24 @@ function showShop(){
   ui.appendChild(el("h2","panel-title","Black Market of E-Rantel"));
   ui.appendChild(el("div","points-banner","Gold: "+account.gold));
   const tabs=el("div","tabs");
-  [["items","Items"],["gear","Gear"],["scrolls","Scrolls"]].forEach(([k,n])=>{ const b=el("button",(shopTab===k?"active":""),n); b.onclick=()=>{ shopTab=k; showShop(); }; tabs.appendChild(b); });
+  [["items","Items"],["gear","Gear"],["scrolls","Scrolls"],["sell","Sell"]].forEach(([k,n])=>{ const b=el("button",(shopTab===k?"active":""),n); b.onclick=()=>{ shopTab=k; showShop(); }; tabs.appendChild(b); });
   ui.appendChild(tabs);
   const menu=el("div","menu");
   if(shopTab==="gear"){ for(const k in GEAR){ const g=GEAR[k];
     const b=el("button",null,"<b class='gear-r"+g.rarity+"'>"+g.name+"</b> <span class='pill'>"+g.slot+"</span> — "+g.price+"g<br>"+modStr(g.mods));
     b.onclick=()=>buy(k,"gear",g.price); menu.appendChild(b); } }
+  else if(shopTab==="sell"){
+    ui.appendChild(el("div","tagline","Sells for 50% of value. Equipped gear isn't listed — unequip it first."));
+    const gearKeys=Object.keys(account.gearInv).filter(k=>account.gearInv[k]>0);
+    const itemKeys=Object.keys(account.inv).filter(k=>account.inv[k]>0);
+    if(!gearKeys.length && !itemKeys.length) menu.appendChild(el("div","tagline","<span style='color:#9a8fc0'>Nothing to sell.</span>"));
+    for(const k of gearKeys){ const g=GEAR[k]; const val=Math.max(1,Math.floor(g.price*0.5));
+      const b=el("button",null,"Sell <b class='gear-r"+g.rarity+"'>"+g.name+"</b> ×"+account.gearInv[k]+" <span class='pill'>"+g.slot+"</span> — <b style='color:#ffd866'>+"+val+"g</b>");
+      b.onclick=()=>sell(k,"gear"); menu.appendChild(b); }
+    for(const k of itemKeys){ const it=ITEMS[k]; const val=Math.max(1,Math.floor(it.price*0.5));
+      const b=el("button",null,"Sell <b>"+it.name+"</b> ×"+account.inv[k]+" — <b style='color:#ffd866'>+"+val+"g</b>");
+      b.onclick=()=>sell(k,"item"); menu.appendChild(b); }
+  }
   else { const keys=Object.keys(ITEMS).filter(k=>shopTab==="scrolls"?ITEMS[k].kind==="scroll":ITEMS[k].kind!=="scroll");
     for(const k of keys){ const it=ITEMS[k];
       const b=el("button",null,"<b>"+it.name+"</b> — "+it.price+"g <span style='color:#9a8fc0'>(have "+(account.inv[k]||0)+")</span><br><span style='font-weight:400;font-size:12px;color:#9a8fc0'>"+it.desc+"</span>");
@@ -547,6 +559,13 @@ function showShop(){
 function buy(k, type, price){ if(account.gold<price){ Audio2.defeat(); return; } account.gold-=price;
   if(type==="gear") account.gearInv[k]=(account.gearInv[k]||0)+1; else account.inv[k]=(account.inv[k]||0)+1;
   Audio2.coin(); saveGame(party,progress,account); showShop(); }
+function sell(k, type){
+  let price;
+  if(type==="gear"){ if(!(account.gearInv[k]>0)) return; price=GEAR[k].price; account.gearInv[k]--; if(account.gearInv[k]<=0) delete account.gearInv[k]; }
+  else { if(!(account.inv[k]>0)) return; price=ITEMS[k].price; account.inv[k]--; }
+  account.gold += Math.max(1, Math.floor(price*0.5));
+  Audio2.coin(); saveGame(party,progress,account); showShop();
+}
 
 function showStatus(){
   if(!curChar||!party.includes(curChar)) curChar=hero;

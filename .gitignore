@@ -5,3 +5,8 @@ __pycache__/
 *.save.json
 .pytest_cache/
 .DS_Store
+
+# Electron / Node
+node_modules/
+dist/
+npm-debug.log*

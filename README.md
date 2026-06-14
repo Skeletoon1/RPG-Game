@@ -34,6 +34,29 @@ straight off the filesystem — no build step or server needed.)*
 - Animated canvas combat: pixel/vector sprites, particle spell effects, floating
   damage/heal numbers, screen shake, and click-to-target.
 
+### 🖥️ Desktop app (Windows / macOS / Linux)
+
+The game is also packaged as a native desktop app via **Electron** (its own
+window, app icon, no browser needed).
+
+**Easiest — download a prebuilt installer (no tools required):**
+1. On GitHub, open the **Actions** tab → the latest **"Build desktop apps"** run.
+2. Download the artifact for your OS under **Artifacts**:
+   - Windows → `OverlordRPG-windows-latest` (contains `OverlordRPG-Setup-x.y.z.exe`)
+   - macOS → `OverlordRPG-macos-latest` (`.dmg`)
+   - Linux → `OverlordRPG-ubuntu-latest` (`.AppImage`)
+3. Unzip and run it. *(Windows may show a SmartScreen warning because the app
+   isn't code-signed — click **More info → Run anyway**.)*
+
+If no run exists yet, go to **Actions → Build desktop apps → Run workflow**.
+
+**Build it yourself (needs Node.js):**
+```bash
+npm install
+npm start            # run the app in a dev window
+npm run dist         # build an installer for your current OS (output in dist/)
+```
+
 ### ⌨️ Terminal version (Python)
 
 Pure Python 3, **no dependencies**. Just run it.

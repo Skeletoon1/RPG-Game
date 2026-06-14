@@ -1,0 +1,52 @@
+name: Build desktop apps
+
+# Builds installable desktop apps (Windows .exe, macOS .dmg, Linux .AppImage)
+# and uploads them as downloadable artifacts. Run automatically on relevant
+# pushes, or manually from the Actions tab ("Run workflow").
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - claude/overlord-rpg-game-djt7dc
+    paths:
+      - "web/**"
+      - "electron/**"
+      - "package.json"
+      - ".github/workflows/desktop-build.yml"
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build installer
+        run: npm run dist
+        env:
+          # Don't fail just because the build isn't code-signed.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: OverlordRPG-${{ matrix.os }}
+          if-no-files-found: warn
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage

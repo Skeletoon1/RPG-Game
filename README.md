@@ -4,6 +4,21 @@ A complete, terminal-based turn-based RPG inspired by the **Overlord** light nov
 The Great Tomb of Nazarick has descended upon the New World — choose one of its
 rulers, master your class abilities, and conquer all five chapters of the campaign.
 
+There are **two versions**:
+
+### 🎮 Graphical browser game (easiest — no install at all)
+A fully graphical version with animated sprites, spell effects, and damage numbers,
+all drawn procedurally (no image files). To play:
+
+1. Open the **`web`** folder.
+2. **Double-click `index.html`** — it opens in your web browser (Chrome/Edge/Firefox).
+
+That's it. No Python, no terminal, nothing to install. Your progress saves
+automatically in the browser. *(For developers: it's plain HTML/CSS/JS and runs
+straight off the filesystem — no build step or server needed.)*
+
+### ⌨️ Terminal version (Python)
+
 Pure Python 3, **no dependencies**. Just run it.
 
 **Windows** (Command Prompt or PowerShell — note: use `py`, **not** `python3`,

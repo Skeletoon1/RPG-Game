@@ -6,7 +6,12 @@ name: Build desktop apps
 #   installers + auto-update metadata, which the app uses to update itself.
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a GitHub Release (uses the version in package.json)"
+        type: boolean
+        default: false
   push:
     branches:
       - claude/overlord-rpg-game-djt7dc
@@ -39,15 +44,17 @@ jobs:
       - name: Build (and publish a Release on version tags)
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then PUB=always; else PUB=never; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* || "$FORCE_PUBLISH" == "true" ]]; then PUB=always; else PUB=never; fi
           echo "Publish mode: $PUB"
           npx electron-builder --publish "$PUB"
+        # FORCE_PUBLISH is set from the manual "publish" input above.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          FORCE_PUBLISH: ${{ github.event.inputs.publish }}
 
       - name: Upload installer (test builds only)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ github.event.inputs.publish != 'true' && !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: OverlordRPG-${{ matrix.os }}

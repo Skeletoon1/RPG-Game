@@ -1,7 +1,7 @@
 {
   "name": "overlord-rpg",
   "productName": "Overlord RPG",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Overlord RPG — Nazarick Rising: a turn-based RPG inspired by the Overlord light novel/anime.",
   "author": "Nazarick",
   "license": "MIT",
@@ -43,9 +43,11 @@
       "artifactName": "OverlordRPG-Setup-${version}.${ext}"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
     },
     "mac": {
       "target": "dmg",

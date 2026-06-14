@@ -4,8 +4,10 @@ const fs=require("fs"), path=require("path"), vm=require("vm");
 const base=path.join(__dirname,"..","web","js");
 const src=["utils.js","data.js","engine.js","save.js"]
   .map(f=>fs.readFileSync(path.join(base,f),"utf8")).join("\n");
-const ctx={Math,JSON,console}; vm.createContext(ctx);
-vm.runInContext(src+"\nthis.__api={Player,makeEnemy,makeSummon,makeAlly,applyAbility,tickStatusStart,tickStatusEnd,aiChoose,rollDrops,ABILITIES,CLASSES,SCHOOLS,GEAR,ITEMS,ENEMIES,SUMMONS,MAX_RANK,playerToObj,objToPlayer};",ctx);
+const _store={};
+const localStorage={getItem:k=>_store[k]||null,setItem:(k,v)=>{_store[k]=v;},removeItem:k=>{delete _store[k];}};
+const ctx={Math,JSON,console,localStorage}; vm.createContext(ctx);
+vm.runInContext(src+"\nthis.__api={Player,makeEnemy,makeSummon,makeAlly,applyAbility,tickStatusStart,tickStatusEnd,aiChoose,rollDrops,ABILITIES,CLASSES,SCHOOLS,GEAR,ITEMS,ENEMIES,SUMMONS,MAX_RANK,playerToObj,objToPlayer,saveGame,loadGame,hasSave};",ctx);
 const A=ctx.__api;
 let pass=0,fail=0;
 function ok(n,c){ if(c){pass++;console.log("PASS  "+n);} else {fail++;console.log("FAIL  "+n);} }
@@ -116,5 +118,22 @@ function mockBattle(party,enemies){ return {party,enemies,
     A.tickStatusEnd(enemy,b); if(!p.alive) break; }
   ok(key+" wins basic fight", won);
 } })();
+
+// 13. full saveGame/loadGame round-trip preserves party + account.gearInv
+(function(){ const h=new A.Player("Lead",A.CLASSES.overlord); h.levelUp(); h.spendSkill("necromancy");
+  const ally=A.makeAlly("vampire",4);
+  const party=[h,ally];
+  const account={gold:777, inv:{potion:3}, gearInv:{war_axe:2, mage_robe:1}};
+  const progress={chapter:2, wins:1, completed:false};
+  A.saveGame(party, progress, account);
+  ok("hasSave true after save", A.hasSave());
+  const l=A.loadGame();
+  ok("loads two party members", l.party.length===2);
+  ok("preserves gold", l.account.gold===777);
+  ok("preserves consumables", l.account.inv.potion===3);
+  ok("preserves gear pool (the bug)", l.account.gearInv.war_axe===2 && l.account.gearInv.mage_robe===1);
+  ok("preserves progress", l.progress.chapter===2 && l.progress.wins===1);
+  ok("ally rebuilt with its level", l.party[1].level===4);
+})();
 
 console.log("\n"+pass+"/"+(pass+fail)+" checks passed"); process.exit(fail?1:0);

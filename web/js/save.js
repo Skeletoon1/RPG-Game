@@ -23,14 +23,16 @@ function objToPlayer(d){
 
 function saveGame(party, progress, account){
   const data={ party: party.map(playerToObj), progress:progress,
-    account:{gold:account.gold, inv:account.inv} };
+    account:{gold:account.gold, inv:account.inv, gearInv:account.gearInv||{}} };
   try{ localStorage.setItem(SAVE_KEY, JSON.stringify(data)); return true; }catch(e){ return false; }
 }
 function hasSave(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
 function loadGame(){
   try{ const data=JSON.parse(localStorage.getItem(SAVE_KEY)); if(!data) return null;
     const party=data.party.map(objToPlayer);
-    return {party, progress:data.progress, account:data.account||{gold:50,inv:{}}};
+    const acc=data.account||{};
+    return {party, progress:data.progress,
+      account:{gold:acc.gold||0, inv:acc.inv||{}, gearInv:acc.gearInv||{}}};
   }catch(e){ return null; }
 }
 function deleteSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }

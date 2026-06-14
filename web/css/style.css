@@ -114,10 +114,6 @@ button.danger{background:linear-gradient(180deg,#a33,#722)}
 .tier-spell .an{color:#8ab6ff}
 .tier-super .an{color:#e7a3ff;text-shadow:0 0 8px rgba(200,100,255,.6)}
 
-.toast{position:absolute;top:46%;left:50%;transform:transl(-50%,-50%);
-  z-index:9;font-size:34px;font-weight:900;letter-spacing:3px;
-  text-shadow:0 0 24px rgba(0,0,0,.9);pointer-events:none}
-
 @media(max-width:560px){
   .cards{grid-template-columns:repeat(2,1fr)}
   .ab-btn{min-width:120px}

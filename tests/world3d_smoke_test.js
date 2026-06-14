@@ -49,7 +49,7 @@ const THREE = {
   WebGLRenderer: function () { return { setPixelRatio() {}, setSize() {}, render() {}, shadowMap: { enabled: false, type: 0 }, outputEncoding: 0 }; },
   Color: function () { return { copy() { return this; }, set() { return this; } }; },
   Fog: function () {}, FogExp2: function () {},
-  HemisphereLight: function () { return obj(); },
+  HemisphereLight: function () { return obj(); }, AmbientLight: function () { return obj(); },
   DirectionalLight: function () { const o = obj(); o.castShadow = false; o.shadow = { mapSize: { set() {} }, camera: {} }; return o; },
   PointLight: function () { const o = obj(); o.intensity = 1; o.distance = 0; return o; },
   BoxGeometry: function () { return {}; }, SphereGeometry: function () { return {}; },
@@ -59,8 +59,9 @@ const THREE = {
   OctahedronGeometry: function () { return {}; }, RingGeometry: function () { return {}; },
   BufferGeometry: function () { return { setAttribute() {}, attributes: {}, computeVertexNormals() {} }; },
   BufferAttribute: function () { return {}; },
-  CanvasTexture: function () { return {}; },
+  CanvasTexture: function () { return { wrapS: 0, wrapT: 0, repeat: { set() {} }, needsUpdate: false }; },
   DataTexture: function () { return { needsUpdate: false, minFilter: 0, magFilter: 0 }; },
+  RepeatWrapping: 1000,
   ShaderMaterial: function (o) { return Object.assign({ uniforms: {} }, o); },
   MeshToonMaterial: function (o) { return { color: (o && o.color) || 0, emissive: 0, emissiveIntensity: 1, opacity: 1, transparent: false, gradientMap: null }; },
   MeshBasicMaterial: function (o) { return Object.assign({ color: 0, opacity: 1, transparent: false }, o); },
@@ -82,7 +83,12 @@ function elMock() {
     appendChild(c) { this._children.push(c); return c; }, remove() {}, matches() { return false; },
     addEventListener() {}, requestPointerLock() {}, querySelector() { return elMock(); },
     getContext(type) {
-      if (type === "2d") return { createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), fillRect() {}, fillText() {}, set fillStyle(v) {}, set font(v) {} };
+      if (type === "2d") return {
+        createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }),
+        fillRect() {}, clearRect() {}, fillText() {}, beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+        arc() {}, stroke() {}, fill() {}, save() {}, restore() {}, translate() {}, rotate() {}, scale() {},
+        set fillStyle(v) {}, set strokeStyle(v) {}, set lineWidth(v) {}, set font(v) {}, set globalAlpha(v) {},
+      };
       return {};
     },
   };

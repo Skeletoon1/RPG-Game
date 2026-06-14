@@ -85,7 +85,8 @@ function drawCombatants(t){
   }
 }
 function drawUnitBar(e, ox){
-  const y=e.y - e.spriteScale*44 - 14, w=64, x=e.x+ox-w/2;
+  // clamp so the name + bar of tall sprites (bosses) never go off the top edge
+  const y=Math.max(20, e.y - e.spriteScale*44 - 14), w=64, x=e.x+ox-w/2;
   ctx.font="bold 11px 'Trebuchet MS',sans-serif"; ctx.textAlign="center";
   ctx.fillStyle=e.isBoss?"#ff8a8a":(e.isSummon?"#bdb0ff":"#ece6ff"); ctx.fillText(e.name, e.x+ox, y-12);
   ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(x-1,y-1,w+2,7);
@@ -132,9 +133,12 @@ function makeBattle(enemies, canFlee){
   return b;
 }
 function layoutBattle(){
-  const py=170;
-  battle.party.forEach((e,i)=>{ e.x=120+i*30; e.y= py+i*44; e.spriteScale=e.isSummon?2.4:2.7; });
-  battle.enemies.forEach((e,i)=>{ e.x=680-i*32; e.y= py+i*44; e.spriteScale=e.isBoss?4.2:2.7; });
+  const py=150, gap=40;
+  battle.party.forEach((e,i)=>{ e.x=120+i*30; e.y= py+i*gap; e.spriteScale=e.isSummon?2.4:2.7; });
+  battle.enemies.forEach((e,i)=>{
+    if(e.isBoss){ e.x=600; e.y=215; e.spriteScale=3.6; }   // lower & a touch smaller so the HP bar fits on screen
+    else { e.x=680-i*32; e.y= py+i*gap; e.spriteScale=2.7; }
+  });
 }
 function renderLog(){ clear(logEl); for(const m of battle.logs.slice(-30)) logEl.appendChild(el("div","l",m));
   logEl.scrollTop=logEl.scrollHeight; }

@@ -307,38 +307,56 @@ function addMotes() {
   scene.add(motes);
 }
 
+function signpost(x, z, rot) {
+  const g = new THREE.Group();
+  const post = cyl(0.1, 0.12, 2.0, 0x6a4a2a); post.position.y = 1.0;
+  const board = box(1.5, 0.7, 0.12, 0x9a7038); board.position.y = 1.7;
+  g.add(post, board); g.position.set(x, 0, z); if (rot) g.rotation.y = rot; shadowCasters(g); scene.add(g);
+}
 function buildTown() {
-  const PR = 13;                 // central square radius (cozy)
+  const PR = 12;                 // central square radius (cozy)
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(PR, 40), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
   plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.07; plaza.receiveShadow = true; scene.add(plaza);
   const rim = new THREE.Mesh(new THREE.TorusGeometry(PR, 0.4, 8, 48), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
-  // a cobbled main street leading from the entrance (south/+z) into the square
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(11, 40), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
+  // narrow cobbled main street from the entrance (south/+z) into the square
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(7, 44), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
   road.rotation.x = -Math.PI / 2; road.position.set(0, 0.06, 31); road.receiveShadow = true; scene.add(road);
   if (!placeStatic("b_well", 0, 0, 3.0)) fountain(0, 0);   // centerpiece
 
   const roofCols = [0xe05a5a, 0x5a86e0, 0x5ac06a, 0xe0a83c, 0x9a5ae0, 0xe07ab0];
-  const FW = Math.PI / 2;        // face +x   (left-row faces the street)
-  // hand-authored "Town of Beginnings": [key, x, z, (rot)] — packed close together
+  const FW = Math.PI / 2;
+  // denser hand-authored "Town of Beginnings": [key, x, z, (rot)]
   const L = [
-    // buildings hugging the square (face the centre)
-    ["b_church", 0, -17], ["b_tavern", -14, -11], ["b_market", 14, -11],
-    ["b_blacksmith", -18, 1], ["b_home_b", 18, 1], ["b_tower", 17, -16], ["b_windmill", -17, -16],
-    ["b_home_a", -13, 10], ["b_home_b", 13, 10],
-    // main street, two tight rows of homes/shops
-    ["b_home_a", -10, 21, FW], ["b_home_b", -10, 30, FW], ["b_tavern", -10, 39, FW],
-    ["b_home_b", 10, 21, -FW], ["b_home_a", 10, 30, -FW], ["b_market", 10, 39, -FW],
+    ["b_church", 0, -15], ["b_tavern", -12, -9], ["b_market", 12, -9],
+    ["b_blacksmith", -15, 1], ["b_home_b", 15, 1], ["b_tower", 15, -14], ["b_windmill", -15, -14],
+    ["b_home_a", -11, 9], ["b_home_b", 11, 9],
+    // tight street rows (x = ±7), four each side
+    ["b_home_a", -7, 17, FW], ["b_home_b", -7, 24, FW], ["b_tavern", -7, 31, FW], ["b_home_a", -7, 38, FW],
+    ["b_home_b", 7, 17, -FW], ["b_home_a", 7, 24, -FW], ["b_market", 7, 31, -FW], ["b_home_b", 7, 38, -FW],
   ];
   let ci = 0;
   for (const e of L) {
     const x = e[1], z = e[2], rot = (e.length > 3 ? e[3] : Math.atan2(-x, -z));
     if (!placeStatic(e[0], x, z, ENV_SCALE, rot)) house(x, z, rot, roofCols[(ci++) % roofCols.length]);
   }
+  // wooden fences lining the street + a gate at the entrance
+  for (let z = 15; z <= 42; z += 4) { placeStatic("fence_wood", -9.5, z, ENV_SCALE, 0); placeStatic("fence_wood", 9.5, z, ENV_SCALE, 0); }
+  placeStatic("fence_gate", 0, 44, ENV_SCALE, Math.PI / 2);
+  // signposts at the gate and square
+  signpost(-4, 43, 0.4); signpost(3.5, 11, -0.5);
+  // banners, market tent, weapon rack, wheelbarrow
+  placeStatic("flag_red", -8, -12, ENV_SCALE); placeStatic("flag_blue", 8, -12, ENV_SCALE);
+  placeStatic("flag_blue", -16, -2, ENV_SCALE); placeStatic("flag_red", 16, -2, ENV_SCALE);
+  placeStatic("tent", -5, -4, ENV_SCALE, 0.4); placeStatic("weaponrack", -13, 4, ENV_SCALE, 0.7); placeStatic("wheelbarrow", 6, 5, ENV_SCALE, 1.1);
+  // scattered market clutter (varied props, smaller)
+  const PROPS = ["barrel", "crate", "sack", "crate_long", "lumber"];
+  for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, d = PR - 6 + Math.random() * 5, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(PROPS[Math.floor(Math.random() * PROPS.length)], x, z, 2.4, Math.random() * 6)) barrel(x, z); }
+  // a few trees inside the town (corners / between buildings)
+  const TT = [[-10.5, -3], [10.5, -3], [-10, 13], [10, 13], [-4, -13], [4, -13]];
+  for (const t of TT) { if (!placeStatic(Math.random() < 0.5 ? "tree_a" : "tree_b", t[0], t[1], ENV_SCALE * 0.7, Math.random() * 6)) primTree(t[0], t[1]); }
   // lamps lining the street + around the square
-  [[-6, 16], [6, 16], [-6, 26], [6, 26], [-6, 36], [6, 36]].forEach(p => lamppost(p[0], p[1]));
+  [[-5, 15], [5, 15], [-5, 25], [5, 25], [-5, 35], [5, 35]].forEach(p => lamppost(p[0], p[1]));
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) lamppost(Math.sin(a) * (PR - 1), Math.cos(a) * (PR - 1));
-  // market clutter near the square
-  for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, d = PR - 4 + Math.random() * 3, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, 2.4, Math.random() * 6)) barrel(x, z); }
 }
 function fountain(x, z) {
   const grp = new THREE.Group();

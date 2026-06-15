@@ -20,6 +20,17 @@ const JOBS = {
   rock_c: "decoration/nature/rock_single_C.gltf",
   barrel: "decoration/props/barrel.gltf",
   crate: "decoration/props/crate_A_big.gltf",
+  // town dressing
+  fence_wood: "buildings/neutral/fence_wood_straight.gltf",
+  fence_gate: "buildings/neutral/fence_wood_straight_gate.gltf",
+  flag_red: "decoration/props/flag_red.gltf",
+  flag_blue: "decoration/props/flag_blue.gltf",
+  tent: "decoration/props/tent.gltf",
+  weaponrack: "decoration/props/weaponrack.gltf",
+  wheelbarrow: "decoration/props/wheelbarrow.gltf",
+  sack: "decoration/props/sack.gltf",
+  crate_long: "decoration/props/crate_long_A.gltf",
+  lumber: "decoration/props/resource_lumber.gltf",
 };
 (async () => {
   const io = new NodeIO();

@@ -144,6 +144,18 @@ function makeModelChar(modelName, height, states, faceFix) {
 }
 function charAnim(g, name) { if (g && g.userData && g.userData.play) g.userData.play(name); }
 function charTick(g, dt) { if (g && g.userData && g.userData.mixer) g.userData.mixer.update(dt); }
+// place a static (non-animated) model at x,z with a fixed scale; null if unavailable
+function placeStatic(key, x, z, scale, rotY) {
+  const src = PARSED[key]; if (!src || !src.scene || !src.scene.clone) return null;
+  const root = src.scene.clone(true); root.scale.setScalar(scale || 4);
+  const box = new THREE.Box3().setFromObject(root); const c = new THREE.Vector3(); box.getCenter(c);
+  root.position.set(-c.x, -box.min.y, -c.z);  // center on origin, bottom on ground
+  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const g = new THREE.Group(); g.add(root); g.position.set(x, 0, z); if (rotY) g.rotation.y = rotY;
+  scene.add(g); return g;
+}
+function buildWorld() { buildTown(); buildScenery(); addMotes(); }
+const ENV_SCALE = 4;
 
 // ---------------------------------------------------------------------------
 // chibi characters
@@ -258,9 +270,7 @@ function init() {
   gGeo.computeVertexNormals();
   const ground = new THREE.Mesh(gGeo, toon(0xffffff, null, 1, grass)); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
-  buildTown();
-  buildScenery();
-  addMotes();
+  // town & scenery are built in buildWorld() after models finish loading
 
   window.addEventListener("resize", onResize);
   document.addEventListener("keydown", e => { keys[e.code] = true; });
@@ -301,13 +311,17 @@ function buildTown() {
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(18, 48), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
   plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.07; plaza.receiveShadow = true; scene.add(plaza);
   const rim = new THREE.Mesh(new THREE.TorusGeometry(18, 0.4, 8, 48), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
-  fountain(0, 0);
+  if (!placeStatic("b_well", 0, 0, ENV_SCALE)) fountain(0, 0);   // centerpiece
+  const BLD = ["b_home_a", "b_home_b", "b_tavern", "b_church", "b_market", "b_blacksmith", "b_windmill", "b_tower"];
   const roofCols = [0xe05a5a, 0x5a86e0, 0x5ac06a, 0xe0a83c, 0x9a5ae0, 0xe07ab0];
   let ci = 0;
-  for (let a = -2.4; a <= 2.4; a += 0.6) { const d = 27; house(Math.sin(a) * d, Math.cos(a) * d - 4, a + Math.PI, roofCols[(ci++) % roofCols.length]); }
+  for (let a = -2.4; a <= 2.4; a += 0.6) {
+    const d = 28, x = Math.sin(a) * d, z = Math.cos(a) * d - 4, rot = Math.atan2(-x, -z);
+    if (!placeStatic(BLD[ci % BLD.length], x, z, ENV_SCALE, rot)) house(x, z, a + Math.PI, roofCols[ci % roofCols.length]);
+    ci++;
+  }
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) lamppost(Math.sin(a) * 16, Math.cos(a) * 16);
-  for (let i = 0; i < 10; i++) barrel(rand(30), -10 - Math.random() * 22);
-  for (let i = 0; i < 4; i++) tent(rand(34), -16 - Math.random() * 16, roofCols[i % roofCols.length]);
+  for (let i = 0; i < 10; i++) { const x = rand(30), z = -10 - Math.random() * 22; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, ENV_SCALE, Math.random() * 6)) barrel(x, z); }
 }
 function fountain(x, z) {
   const grp = new THREE.Group();
@@ -337,30 +351,27 @@ function lamppost(x, z) {
 function barrel(x, z) { const b = cyl(0.5, 0.5, 1.0, 0x7a5230); b.position.set(x, 0.5, z); b.castShadow = true; scene.add(b); }
 function tent(x, z, col) { const grp = new THREE.Group(); const t = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2.6, 4), toon(col || 0xd05a5a)); t.position.y = 1.3; t.rotation.y = Math.PI / 4; const pole = cyl(0.06, 0.06, 0.6, 0x4a3320); pole.position.y = 2.7; grp.add(t, pole); grp.position.set(x, 0, z); shadowCasters(grp); scene.add(grp); }
 
+function primTree(x, z) {
+  const grp = new THREE.Group();
+  const trunk = cyl(0.28, 0.42, 2.6, 0x4a3320); trunk.position.y = 1.3;
+  const l1 = sph(1.7, 0x2f6d38); l1.position.y = 3.3; l1.scale.set(1.1, 1.0, 1.1);
+  const l2 = sph(1.2, 0x387a42); l2.position.set(0.5, 4.1, 0.2);
+  grp.add(trunk, l1, l2); grp.position.set(x, 0, z); shadowCasters(grp); scene.add(grp);
+}
+function primRock(x, z) {
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(THREE.MathUtils.randFloat(0.8, 1.8)), toon(0x6a6a78));
+  rock.position.set(x, 0.6, z); rock.rotation.set(Math.random(), Math.random(), Math.random()); rock.castShadow = true; scene.add(rock);
+}
 function buildScenery() {
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 90; i++) {
     const x = rand(WORLD), z = rand(WORLD);
     if (Math.hypot(x, z) < 34) continue;
-    const r = Math.random();
-    if (r < 0.5) { // stylized tree (two leaf blobs)
-      const grp = new THREE.Group();
-      const trunk = cyl(0.28, 0.42, 2.6, 0x4a3320); trunk.position.y = 1.3;
-      const l1 = sph(1.7, 0x2f6d38); l1.position.y = 3.3; l1.scale.set(1.1, 1.0, 1.1);
-      const l2 = sph(1.2, 0x387a42); l2.position.set(0.5, 4.1, 0.2);
-      grp.add(trunk, l1, l2); grp.position.set(x, 0, z); shadowCasters(grp); scene.add(grp);
-    } else if (r < 0.8) { // rock
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(THREE.MathUtils.randFloat(0.8, 1.8)), toon(0x6a6a78));
-      rock.position.set(x, 0.6, z); rock.rotation.set(Math.random(), Math.random(), Math.random());
-      rock.castShadow = true; scene.add(rock);
-    } else { // glowing crystal cluster (Nazarick mana)
-      const grp = new THREE.Group();
-      for (let k = 0; k < 3; k++) {
-        const cr = cone(0.25, THREE.MathUtils.randFloat(1, 2.2), 0x7a4bff, 0x7a4bff, 0.8);
-        cr.position.set((Math.random() - 0.5), cr.geometry.parameters.height / 2, (Math.random() - 0.5)); cr.rotation.z = (Math.random() - 0.5) * 0.4;
-        grp.add(cr);
-      }
-      const gl = glowSprite(0x9a6bff, 3.5); gl.position.y = 1.2; grp.add(gl);
-      grp.position.set(x, 0, z); scene.add(grp);
+    const rot = Math.random() * 6.28;
+    if (Math.random() < 0.62) {
+      const k = Math.random() < 0.4 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg");
+      if (!placeStatic(k, x, z, ENV_SCALE, rot)) primTree(x, z);
+    } else {
+      if (!placeStatic(Math.random() < 0.5 ? "rock_a" : "rock_c", x, z, ENV_SCALE, rot)) primRock(x, z);
     }
   }
   // distant mountain ring (hazy blue for daytime)
@@ -710,7 +721,7 @@ function buildClassCards() {
 }
 
 if (typeof THREE !== "undefined") {
-  init(); parseModels(function(){}); buildClassCards();
+  init(); parseModels(buildWorld); buildClassCards();
   document.getElementById("resumebtn").onclick = lockMouse;
   document.getElementById("respawnbtn").onclick = respawn;
   loop();

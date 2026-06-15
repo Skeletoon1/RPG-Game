@@ -376,6 +376,14 @@ function buildTown() {
     if (!placeStatic(Math.random() < 0.45 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg"), x, z, h, Math.random() * 6)) primTree(x, z);
     placed++;
   }
+  // a grove of tall trees framing the back (north) of the town
+  for (let i = 0; i < 18; i++) {
+    const x = THREE.MathUtils.randFloatSpread(50), z = -20 - Math.random() * 18;
+    const h = ENV_SCALE * THREE.MathUtils.randFloat(1.4, 2.2);
+    if (!placeStatic(Math.random() < 0.5 ? "tree_a" : (Math.random() < 0.65 ? "tree_b" : "trees_lg"), x, z, h, Math.random() * 6)) primTree(x, z);
+  }
+  // a few inside the back corners (away from the back-row buildings)
+  [[-18.5, -16], [18.5, -16], [-18.5, -8], [18.5, -8]].forEach(s => { if (!placeStatic(Math.random() < 0.5 ? "tree_a" : "tree_b", s[0], s[1], ENV_SCALE * 1.5, Math.random() * 6)) primTree(s[0], s[1]); });
   // lamps lining the street + around the square
   [[-5, 15], [5, 15], [-5, 25], [5, 25], [-5, 35], [5, 35]].forEach(p => lamppost(p[0], p[1]));
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) lamppost(Math.sin(a) * (PR - 1), Math.cos(a) * (PR - 1));

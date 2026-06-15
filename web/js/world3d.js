@@ -402,6 +402,8 @@ function addBrazier(x, z) {
 // ---------------------------------------------------------------------------
 const POWER_STAT = { overlord: "mag", demon: "mag", maid: "mag", ranger: "atk", vampire: "atk", frost: "atk" };
 const RANGED = { overlord: 1, demon: 1, maid: 1, ranger: 1 };
+const CLASS_MODEL = { overlord: "mage", demon: "mage", maid: "mage", ranger: "rogue", vampire: "rogue", frost: "knight" };
+const MODEL_FACE = false; // KayKit rig faces +Z; no flip needed
 
 function makeHero(clsKey) {
   const cc = CLASSES[clsKey], b = cc.base; const col = hex(cc.color || "#b06bff");
@@ -415,7 +417,7 @@ function makeHero(clsKey) {
   };
   const WPN = { overlord: "staff", demon: "staff", maid: "staff", ranger: "bow", vampire: "sword", frost: "sword" };
   yaw = Math.PI; pitch = 0.2;   // face the town at spawn
-  player = makeModelChar("soldier", 2.4, { idle: ["idle"], walk: ["walk"], run: ["run"] }, true)
+  player = makeModelChar(CLASS_MODEL[clsKey] || "knight", 2.05, { idle: ["idle"], walk: ["walk"], run: ["run"] }, MODEL_FACE)
         || makeChibi({ body: col, hair: shade(col, 0.6), pants: 0x39354f, eyeGlow: col, cape: (POWER_STAT[clsKey] === "mag") ? col : null, weapon: WPN[clsKey], scale: 1.0 });
   player.position.set(0, 0, 34); player.rotation.y = yaw; scene.add(player);
   // floating familiar orb above the head
@@ -494,15 +496,12 @@ function shoot(dmg, color, scale, speedMul) {
 // enemies
 // ---------------------------------------------------------------------------
 const EKINDS = [
-  { name: "Dire Fox", model: "fox", height: 1.5, faceFix: false, hp: 34, atk: 9, xp: 12, gold: 6,
-    states: { idle: ["survey", "idle"], walk: ["walk"], run: ["run"] },
-    fb: { body: 0x9a6a3a, skin: 0xb08050, scale: 0.8, eyeGlow: 0xff5a3c } },
-  { name: "Iron Construct", model: "robot", height: 2.6, faceFix: true, hp: 80, atk: 18, xp: 30, gold: 16, melee: true,
-    states: { idle: ["idle"], walk: ["walking", "walk"], run: ["running", "run"], attack: ["punch"] },
-    fb: { body: 0x8a8a96, skin: 0x9aa0aa, scale: 1.3, horns: 1, eyeGlow: 0xffd34d } },
-  { name: "Wild Harpy", model: "parrot", height: 1.6, faceFix: false, fly: true, hp: 30, atk: 12, xp: 16, gold: 7,
-    states: { idle: ["parrot", "fly", "flying"], walk: ["parrot", "fly", "flying"], run: ["parrot", "fly", "flying"] },
-    fb: { body: 0x3a2a55, skin: 0x6a4a8a, scale: 0.9, eyeGlow: 0xc06bff, cape: 0x2a1f44 } },
+  { name: "Skeleton Warrior", model: "skel_warrior", height: 2.0, faceFix: MODEL_FACE, hp: 50, atk: 12, xp: 16, gold: 8, melee: true,
+    states: { idle: ["idle"], walk: ["walk"], run: ["run"], attack: ["attack", "slice", "chop", "melee"] },
+    fb: { body: 0xcfcbb4, skin: 0xe6e2cc, scale: 1.0, eyeGlow: 0xff5a3c } },
+  { name: "Skeleton Mage", model: "skel_mage", height: 2.0, faceFix: MODEL_FACE, hp: 40, atk: 14, xp: 18, gold: 10, melee: true,
+    states: { idle: ["idle"], walk: ["walk"], run: ["run"], attack: ["attack", "slice", "chop", "melee"] },
+    fb: { body: 0x3a2a55, skin: 0xe6e2cc, scale: 1.0, eyeGlow: 0xc06bff, cape: 0x2a1f44 } },
 ];
 function spawnEnemy() {
   const k = EKINDS[Math.floor(Math.random() * EKINDS.length)]; const lvl = hero.level;

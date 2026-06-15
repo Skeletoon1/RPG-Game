@@ -16,3 +16,4 @@ shot*.js
 shot*.png
 *.shot.png
 web/raw/
+web/models/*.glb

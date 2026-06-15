@@ -361,9 +361,21 @@ function buildTown() {
   // scattered market clutter (varied props, smaller)
   const PROPS = ["barrel", "crate", "sack", "crate_long", "lumber"];
   for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, d = PR - 6 + Math.random() * 5, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(PROPS[Math.floor(Math.random() * PROPS.length)], x, z, 2.4, Math.random() * 6)) barrel(x, z); }
-  // a few trees inside the town (corners / between buildings)
-  const TT = [[-10.5, -3], [10.5, -3], [-10, 13], [10, 13], [-4, -13], [4, -13]];
-  for (const t of TT) { if (!placeStatic(Math.random() < 0.5 ? "tree_a" : "tree_b", t[0], t[1], ENV_SCALE * 0.7, Math.random() * 6)) primTree(t[0], t[1]); }
+  // lots of tall trees throughout the town (avoid the street, square & buildings)
+  let placed = 0, tries = 0;
+  while (placed < 26 && tries < 500) {
+    tries++;
+    const x = THREE.MathUtils.randFloatSpread(37), z = -18 + Math.random() * 61;
+    if (Math.abs(x) > 18.5 || z < -18 || z > 43) continue;   // inside the fence
+    if (Math.abs(x) < 5.5 && z > 12) continue;               // keep the street clear
+    if (Math.hypot(x, z) < 13.5) continue;                   // keep the square clear
+    let ok = true;
+    for (const e of L) { if (Math.hypot(x - e[1], z - e[2]) < 6.5) { ok = false; break; } }
+    if (!ok) continue;
+    const h = ENV_SCALE * THREE.MathUtils.randFloat(1.3, 2.0); // taller than field trees
+    if (!placeStatic(Math.random() < 0.45 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg"), x, z, h, Math.random() * 6)) primTree(x, z);
+    placed++;
+  }
   // lamps lining the street + around the square
   [[-5, 15], [5, 15], [-5, 25], [5, 25], [-5, 35], [5, 35]].forEach(p => lamppost(p[0], p[1]));
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) lamppost(Math.sin(a) * (PR - 1), Math.cos(a) * (PR - 1));
@@ -414,7 +426,7 @@ function buildScenery() {
     const rot = Math.random() * 6.28;
     if (Math.random() < 0.66) {
       const k = Math.random() < 0.4 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg");
-      if (!placeStatic(k, x, z, ENV_SCALE * THREE.MathUtils.randFloat(0.8, 1.35), rot)) primTree(x, z);
+      if (!placeStatic(k, x, z, ENV_SCALE * THREE.MathUtils.randFloat(1.0, 1.8), rot)) primTree(x, z);
     } else {
       if (!placeStatic(Math.random() < 0.5 ? "rock_a" : "rock_c", x, z, ENV_SCALE * THREE.MathUtils.randFloat(0.7, 1.2), rot)) primRock(x, z);
     }

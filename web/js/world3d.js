@@ -96,6 +96,56 @@ function shadowCasters(group) { group.traverse(o => { if (o.isMesh) o.castShadow
 function hex(s) { return parseInt(s.slice(1), 16); }
 
 // ---------------------------------------------------------------------------
+// glTF model system (real authored animated models, with primitive fallback)
+// ---------------------------------------------------------------------------
+const PARSED = {};
+function b64ToBuf(b64) { const bin = atob(b64); const n = bin.length; const a = new Uint8Array(n); for (let i = 0; i < n; i++) a[i] = bin.charCodeAt(i); return a.buffer; }
+function parseModels(done) {
+  if (typeof THREE === "undefined" || !THREE.GLTFLoader || typeof window === "undefined" || !window.MODELS) { done && done(); return; }
+  const loader = new THREE.GLTFLoader(); const names = Object.keys(window.MODELS); let n = names.length;
+  if (!n) { done && done(); return; }
+  names.forEach(name => {
+    try {
+      loader.parse(b64ToBuf(window.MODELS[name]), "", g => { PARSED[name] = { scene: g.scene, animations: g.animations }; if (--n === 0) done && done(); },
+        () => { if (--n === 0) done && done(); });
+    } catch (e) { if (--n === 0) done && done(); }
+  });
+}
+function pickClip(clips, keys) {
+  if (!clips || !clips.length) return null;
+  for (const k of keys) { const c = clips.find(cl => cl.name.toLowerCase().indexOf(k) >= 0); if (c) return c; }
+  return clips[0];
+}
+function fitModel(root, targetH) {
+  const box = new THREE.Box3().setFromObject(root); const size = new THREE.Vector3(); box.getSize(size);
+  const s = (targetH || 2.2) / (size.y || 1); root.scale.setScalar(s);
+  const b2 = new THREE.Box3().setFromObject(root); const c = new THREE.Vector3(); b2.getCenter(c);
+  root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
+}
+// returns a Group wrapper {userData:{mixer,actions,play}} or null if model unavailable
+function makeModelChar(modelName, height, states, faceFix) {
+  const src = PARSED[modelName];
+  if (!src || !THREE.SkeletonUtils || !THREE.AnimationMixer) return null;
+  const root = THREE.SkeletonUtils.clone(src.scene);
+  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  fitModel(root, height);
+  if (faceFix) root.rotation.y = Math.PI;
+  const g = new THREE.Group(); g.add(root);
+  const mixer = new THREE.AnimationMixer(root); const clips = src.animations || [];
+  const map = states || { idle: ["idle", "survey", "stand"], walk: ["walk"], run: ["run", "fly", "parrot", "flamingo"] };
+  const actions = {};
+  for (const st in map) { const clip = pickClip(clips, map[st]); if (clip) actions[st] = mixer.clipAction(clip); }
+  g.userData = {
+    mixer, actions, cur: null,
+    play(name) { const u = g.userData; const nx = u.actions[name] || u.actions.idle; if (!nx || u.cur === name) return; if (u.cur && u.actions[u.cur]) u.actions[u.cur].fadeOut(0.18); nx.reset().fadeIn(0.18).play(); u.cur = name; },
+  };
+  g.userData.play("idle");
+  return g;
+}
+function charAnim(g, name) { if (g && g.userData && g.userData.play) g.userData.play(name); }
+function charTick(g, dt) { if (g && g.userData && g.userData.mixer) g.userData.mixer.update(dt); }
+
+// ---------------------------------------------------------------------------
 // chibi characters
 // ---------------------------------------------------------------------------
 function makeWeapon(type, color) {
@@ -365,8 +415,9 @@ function makeHero(clsKey) {
   };
   const WPN = { overlord: "staff", demon: "staff", maid: "staff", ranger: "bow", vampire: "sword", frost: "sword" };
   yaw = Math.PI; pitch = 0.2;   // face the town at spawn
-  player = makeChibi({ body: col, hair: shade(col, 0.6), pants: 0x39354f, eyeGlow: col, cape: (POWER_STAT[clsKey] === "mag") ? col : null, weapon: WPN[clsKey], scale: 1.0 });
-  player.position.set(0, 0, 34); scene.add(player);
+  player = makeModelChar("soldier", 2.4, { idle: ["idle"], walk: ["walk"], run: ["run"] }, true)
+        || makeChibi({ body: col, hair: shade(col, 0.6), pants: 0x39354f, eyeGlow: col, cape: (POWER_STAT[clsKey] === "mag") ? col : null, weapon: WPN[clsKey], scale: 1.0 });
+  player.position.set(0, 0, 34); player.rotation.y = yaw; scene.add(player);
   // floating familiar orb above the head
   playerOrb = sph(0.16, col, col, 1.4); playerOrb.position.set(0, 2.7, 0); player.add(playerOrb);
   const og = glowSprite(col, 0.8); playerOrb.add(og);
@@ -443,28 +494,37 @@ function shoot(dmg, color, scale, speedMul) {
 // enemies
 // ---------------------------------------------------------------------------
 const EKINDS = [
-  { name: "Goblin", body: 0x4e7d36, skin: 0x6a9a44, hp: 34, atk: 9, xp: 12, gold: 6, scale: 0.8, ears: 1, eyeGlow: 0xff5a3c, weapon: "club", pants: 0x3a3320 },
-  { name: "Wraith", body: 0x3a2a55, skin: 0x241a3a, hp: 30, atk: 12, xp: 16, gold: 7, scale: 0.85, eyeGlow: 0xc06bff, cape: 0x2a1f44, pants: 0x241a3a },
-  { name: "Ogre", body: 0x8a5a40, skin: 0xb07a56, hp: 80, atk: 18, xp: 30, gold: 16, scale: 1.3, horns: 1, eyeGlow: 0xffd34d, weapon: "club", pants: 0x4a3320 },
+  { name: "Dire Fox", model: "fox", height: 1.5, faceFix: false, hp: 34, atk: 9, xp: 12, gold: 6,
+    states: { idle: ["survey", "idle"], walk: ["walk"], run: ["run"] },
+    fb: { body: 0x9a6a3a, skin: 0xb08050, scale: 0.8, eyeGlow: 0xff5a3c } },
+  { name: "Iron Construct", model: "robot", height: 2.6, faceFix: true, hp: 80, atk: 18, xp: 30, gold: 16, melee: true,
+    states: { idle: ["idle"], walk: ["walking", "walk"], run: ["running", "run"], attack: ["punch"] },
+    fb: { body: 0x8a8a96, skin: 0x9aa0aa, scale: 1.3, horns: 1, eyeGlow: 0xffd34d } },
+  { name: "Wild Harpy", model: "parrot", height: 1.6, faceFix: false, fly: true, hp: 30, atk: 12, xp: 16, gold: 7,
+    states: { idle: ["parrot", "fly", "flying"], walk: ["parrot", "fly", "flying"], run: ["parrot", "fly", "flying"] },
+    fb: { body: 0x3a2a55, skin: 0x6a4a8a, scale: 0.9, eyeGlow: 0xc06bff, cape: 0x2a1f44 } },
 ];
 function spawnEnemy() {
   const k = EKINDS[Math.floor(Math.random() * EKINDS.length)]; const lvl = hero.level;
-  const mesh = makeChibi({ body: k.body, skin: k.skin, hair: 0x201818, pants: k.pants, horns: k.horns, ears: k.ears, eyeGlow: k.eyeGlow, cape: k.cape, weapon: k.weapon, scale: k.scale });
+  let mesh = makeModelChar(k.model, k.height, k.states, k.faceFix);
+  if (!mesh) mesh = makeChibi(Object.assign({ hair: 0x201818 }, k.fb));
   let x, z; do { x = rand(WORLD - 8); z = rand(WORLD - 8); } while (Math.hypot(x, z) < 36);
-  mesh.position.set(x, 0, z); scene.add(mesh);
+  const baseY = k.fly ? 3.0 : 0;
+  mesh.position.set(x, baseY, z); scene.add(mesh);
   const maxHp = Math.round(k.hp * (1 + 0.25 * (lvl - 1)));
   const bar = document.createElement("div"); bar.className = "ehp"; bar.innerHTML = "<i></i>"; hud.appendChild(bar);
   enemies.push({
-    kind: k, mesh, alive: true, hp: maxHp, maxHp,
+    kind: k, mesh, alive: true, hp: maxHp, maxHp, baseY, baseScale: mesh.scale.x || 1,
     atk: Math.round(k.atk * (1 + 0.22 * (lvl - 1))), def: 4 + lvl * 2,
     xpReward: Math.round(k.xp * (1 + 0.3 * (lvl - 1))), goldReward: Math.round(k.gold * (1 + 0.3 * (lvl - 1))),
     speed: 3.2 + Math.random() * 1.6, atkCd: 0, wanderT: 0, wdir: new THREE.Vector3(), bar, hit: 0,
   });
+  charAnim(mesh, "idle");
 }
 function hurtEnemy(en, dmg, color) {
   if (!en.alive) return; const real = Math.max(1, Math.round(dmg * 100 / (100 + en.def)));
   en.hp -= real; en.hit = 0.12;
-  popText(en.mesh.position.clone().add(new THREE.Vector3(0, 2.7 * (en.kind.scale || 1), 0)), "" + real, color || "#fff");
+  popText(en.mesh.position.clone().add(new THREE.Vector3(0, (en.kind.height || 2) + 0.6, 0)), "" + real, color || "#fff");
   spawnBurstParticles(en.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0)), color || "#ffffff", 6);
   if (en.hp <= 0) killEnemy(en);
 }
@@ -531,8 +591,11 @@ function update(dt) {
     const lim = WORLD - 4; player.position.x = THREE.MathUtils.clamp(player.position.x, -lim, lim); player.position.z = THREE.MathUtils.clamp(player.position.z, -lim, lim);
     player.rotation.y = Math.atan2(move.x, move.z);
   }
-  // bobbing + orb float + aura pulse
-  player.position.y = moving ? Math.abs(Math.sin(T * 12)) * 0.12 : 0;
+  // animation + bob
+  charTick(player, dt);
+  charAnim(player, moving ? (running ? "run" : "walk") : "idle");
+  if (player.userData && player.userData.mixer) player.position.y = 0;   // model has foot animation
+  else player.position.y = moving ? Math.abs(Math.sin(T * 12)) * 0.12 : 0;
   if (playerOrb) { playerOrb.position.set(0, 2.7 + Math.sin(T * 3) * 0.14, 0); playerOrbLight.position.copy(playerOrb.position); }
   if (player.userData.aura) { const s = 1 + Math.sin(T * 4) * 0.08; player.userData.aura.scale.set(s, s, s); player.userData.aura.rotation.z += dt * 1.5; }
 
@@ -554,19 +617,28 @@ function update(dt) {
   for (const en of enemies) {
     if (!en.alive) continue; alive++;
     en.atkCd = Math.max(0, en.atkCd - dt);
-    if (en.hit > 0) { en.hit -= dt; en.mesh.scale.setScalar((en.kind.scale || 1) * (1 + en.hit)); }
-    const toP = player.position.clone().sub(en.mesh.position); const dist = toP.length();
-    en.mesh.position.y = Math.sin(T * 5 + en.mesh.id) * 0.06;
-    if (dist < 17) {
-      toP.y = 0; toP.normalize();
-      if (dist > 2.0) en.mesh.position.add(toP.multiplyScalar(en.speed * dt));
-      en.mesh.rotation.y = Math.atan2(toP.x, toP.z);
-      if (dist <= 2.5 && en.atkCd <= 0) {
+    charTick(en.mesh, dt);
+    let s = en.baseScale; if (en.hit > 0) { en.hit -= dt; s = en.baseScale * (1 + Math.max(0, en.hit)); }
+    en.mesh.scale.setScalar(s);
+    const toP = player.position.clone().sub(en.mesh.position); toP.y = 0; const dist = toP.length();
+    en.mesh.position.y = en.baseY + Math.sin(T * 4 + en.mesh.id) * (en.kind.fly ? 0.3 : 0.05);
+    const ff = en.kind.faceFix ? Math.PI : 0;
+    if (dist < 18) {
+      toP.normalize();
+      if (dist > 2.2) { en.mesh.position.add(toP.clone().multiplyScalar(en.speed * dt)); charAnim(en.mesh, "run"); }
+      else charAnim(en.mesh, en.kind.melee ? "attack" : "idle");
+      en.mesh.rotation.y = Math.atan2(toP.x, toP.z) + ff;
+      if (dist <= 2.6 && en.atkCd <= 0) {
         en.atkCd = 1.2; const dmg = Math.max(1, Math.round(en.atk * 100 / (100 + hero.def))); hero.hp -= dmg;
         popText(player.position.clone().add(new THREE.Vector3(0, 2.4, 0)), "-" + dmg, "#ff5a6e");
         if (hero.hp <= 0) { hero.hp = 0; onDeath(); }
       }
-    } else { en.wanderT -= dt; if (en.wanderT <= 0) { en.wanderT = 1 + Math.random() * 2; en.wdir.set(rand(1), 0, rand(1)).normalize(); } en.mesh.position.add(en.wdir.clone().multiplyScalar(en.speed * 0.4 * dt)); }
+    } else {
+      en.wanderT -= dt; if (en.wanderT <= 0) { en.wanderT = 1 + Math.random() * 2; en.wdir.set(rand(1), 0, rand(1)).normalize(); }
+      en.mesh.position.add(en.wdir.clone().multiplyScalar(en.speed * 0.4 * dt));
+      charAnim(en.mesh, "walk");
+      if (en.wdir.lengthSq() > 0.001) en.mesh.rotation.y = Math.atan2(en.wdir.x, en.wdir.z) + ff;
+    }
   }
   while (alive < 9) { spawnEnemy(); alive++; }
 
@@ -601,7 +673,7 @@ function updateHUD() {
   }
   for (const en of enemies) {
     if (!en.bar) continue; if (!en.alive) { en.bar.style.display = "none"; continue; }
-    const s = toScreen(en.mesh.position.clone().add(new THREE.Vector3(0, 2.6 * (en.kind.scale || 1), 0)));
+    const s = toScreen(en.mesh.position.clone().add(new THREE.Vector3(0, (en.kind.height || 2) + 0.5, 0)));
     if (s.behind || en.mesh.position.distanceTo(player.position) > 45) { en.bar.style.display = "none"; continue; }
     en.bar.style.display = ""; en.bar.style.left = s.x + "px"; en.bar.style.top = s.y + "px"; en.bar.firstChild.style.width = (100 * Math.max(0, en.hp) / en.maxHp) + "%";
   }
@@ -639,7 +711,7 @@ function buildClassCards() {
 }
 
 if (typeof THREE !== "undefined") {
-  init(); buildClassCards();
+  init(); parseModels(function(){}); buildClassCards();
   document.getElementById("resumebtn").onclick = lockMouse;
   document.getElementById("respawnbtn").onclick = respawn;
   loop();

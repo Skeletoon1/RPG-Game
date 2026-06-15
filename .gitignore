@@ -15,3 +15,4 @@ npm-debug.log*
 shot*.js
 shot*.png
 *.shot.png
+web/raw/

@@ -308,25 +308,37 @@ function addMotes() {
 }
 
 function buildTown() {
-  const PR = 20;                 // plaza radius
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PR, 48), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
+  const PR = 13;                 // central square radius (cozy)
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PR, 40), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
   plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.07; plaza.receiveShadow = true; scene.add(plaza);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(PR, 0.45, 8, 56), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
-  if (!placeStatic("b_well", 0, 0, 3.2)) fountain(0, 0);   // centerpiece
-  // ring of buildings around the plaza, with an entrance gap toward the player (south / +z)
-  const BLD = ["b_home_a", "b_tavern", "b_home_b", "b_church", "b_home_a", "b_market", "b_home_b", "b_blacksmith", "b_windmill", "b_home_a", "b_tower", "b_home_b"];
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(PR, 0.4, 8, 48), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
+  // a cobbled main street leading from the entrance (south/+z) into the square
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(11, 40), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
+  road.rotation.x = -Math.PI / 2; road.position.set(0, 0.06, 31); road.receiveShadow = true; scene.add(road);
+  if (!placeStatic("b_well", 0, 0, 3.0)) fountain(0, 0);   // centerpiece
+
   const roofCols = [0xe05a5a, 0x5a86e0, 0x5ac06a, 0xe0a83c, 0x9a5ae0, 0xe07ab0];
-  const BR = 30;                 // building ring radius
+  const FW = Math.PI / 2;        // face +x   (left-row faces the street)
+  // hand-authored "Town of Beginnings": [key, x, z, (rot)] — packed close together
+  const L = [
+    // buildings hugging the square (face the centre)
+    ["b_church", 0, -17], ["b_tavern", -14, -11], ["b_market", 14, -11],
+    ["b_blacksmith", -18, 1], ["b_home_b", 18, 1], ["b_tower", 17, -16], ["b_windmill", -17, -16],
+    ["b_home_a", -13, 10], ["b_home_b", 13, 10],
+    // main street, two tight rows of homes/shops
+    ["b_home_a", -10, 21, FW], ["b_home_b", -10, 30, FW], ["b_tavern", -10, 39, FW],
+    ["b_home_b", 10, 21, -FW], ["b_home_a", 10, 30, -FW], ["b_market", 10, 39, -FW],
+  ];
   let ci = 0;
-  for (let i = 0; i < 14; i++) {
-    const a = (i / 14) * Math.PI * 2;
-    if (Math.cos(a) > 0.78) continue;            // leave a gap on the +z side (entrance)
-    const x = Math.sin(a) * BR, z = Math.cos(a) * BR, rot = Math.atan2(-x, -z);
-    if (!placeStatic(BLD[ci % BLD.length], x, z, ENV_SCALE, rot)) house(x, z, rot, roofCols[ci % roofCols.length]);
-    ci++;
+  for (const e of L) {
+    const x = e[1], z = e[2], rot = (e.length > 3 ? e[3] : Math.atan2(-x, -z));
+    if (!placeStatic(e[0], x, z, ENV_SCALE, rot)) house(x, z, rot, roofCols[(ci++) % roofCols.length]);
   }
-  for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) lamppost(Math.sin(a) * (PR - 1.5), Math.cos(a) * (PR - 1.5));
-  for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, d = PR + 3 + Math.random() * 5, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, ENV_SCALE, Math.random() * 6)) barrel(x, z); }
+  // lamps lining the street + around the square
+  [[-6, 16], [6, 16], [-6, 26], [6, 26], [-6, 36], [6, 36]].forEach(p => lamppost(p[0], p[1]));
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) lamppost(Math.sin(a) * (PR - 1), Math.cos(a) * (PR - 1));
+  // market clutter near the square
+  for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, d = PR - 4 + Math.random() * 3, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, 2.4, Math.random() * 6)) barrel(x, z); }
 }
 function fountain(x, z) {
   const grp = new THREE.Group();
@@ -368,9 +380,9 @@ function primRock(x, z) {
   rock.position.set(x, 0.6, z); rock.rotation.set(Math.random(), Math.random(), Math.random()); rock.castShadow = true; scene.add(rock);
 }
 function buildScenery() {
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 150; i++) {
     const x = rand(WORLD), z = rand(WORLD);
-    if (Math.hypot(x, z) < 42) continue;                 // keep clear of the town
+    if (Math.abs(x) < 24 && z > -26 && z < 50) continue;  // keep clear of the town + street (trees hug the edges)
     const rot = Math.random() * 6.28;
     if (Math.random() < 0.66) {
       const k = Math.random() < 0.4 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg");
@@ -435,7 +447,7 @@ function makeHero(clsKey) {
   yaw = Math.PI; pitch = 0.2;   // face the town at spawn
   player = makeModelChar(CLASS_MODEL[clsKey] || "knight", 2.05, { idle: ["idle"], walk: ["walk"], run: ["run"] }, MODEL_FACE)
         || makeChibi({ body: col, hair: shade(col, 0.6), pants: 0x39354f, eyeGlow: col, cape: (POWER_STAT[clsKey] === "mag") ? col : null, weapon: WPN[clsKey], scale: 1.0 });
-  player.position.set(0, 0, 34); player.rotation.y = yaw; scene.add(player);
+  player.position.set(0, 0, 46); player.rotation.y = yaw; scene.add(player);
   // floating familiar orb above the head
   playerOrb = sph(0.16, col, col, 1.4); playerOrb.position.set(0, 2.7, 0); player.add(playerOrb);
   const og = glowSprite(col, 0.8); playerOrb.add(og);
@@ -708,7 +720,7 @@ function onDeath() {
   document.getElementById("deadmsg").textContent = "You reached level " + hero.level + " with " + hero.gold + " gold. The New World is unforgiving.";
   deadOv.classList.remove("hidden");
 }
-function respawn() { hero.hp = hero.maxHp; hero.mp = hero.maxMp; hero.gold = Math.floor(hero.gold * 0.8); player.position.set(0, 0, 34); deadOv.classList.add("hidden"); lockMouse(); }
+function respawn() { hero.hp = hero.maxHp; hero.mp = hero.maxMp; hero.gold = Math.floor(hero.gold * 0.8); player.position.set(0, 0, 46); deadOv.classList.add("hidden"); lockMouse(); }
 function showPause() { paused = true; pauseOv.classList.remove("hidden"); }
 function hidePause() { paused = false; pauseOv.classList.add("hidden"); }
 function lockMouse() { document.getElementById("c3d").requestPointerLock(); }

@@ -384,6 +384,12 @@ function buildTown() {
   }
   // a few inside the back corners (away from the back-row buildings)
   [[-18.5, -16], [18.5, -16], [-18.5, -8], [18.5, -8]].forEach(s => { if (!placeStatic(Math.random() < 0.5 ? "tree_a" : "tree_b", s[0], s[1], ENV_SCALE * 1.5, Math.random() * 6)) primTree(s[0], s[1]); });
+  // small trees nestled in the gaps BETWEEN buildings (street rows + around the square)
+  const BETWEEN = [
+    [-7, 20.5], [-7, 27.5], [-7, 34.5], [7, 20.5], [7, 27.5], [7, 34.5],
+    [-6, -12], [6, -12], [-13.5, -4], [13.5, -4], [-13, 5], [13, 5],
+  ];
+  for (const s of BETWEEN) { if (!placeStatic(Math.random() < 0.5 ? "tree_a" : "tree_b", s[0], s[1], ENV_SCALE * 0.8, Math.random() * 6)) primTree(s[0], s[1]); }
   // lamps lining the street + around the square
   [[-5, 15], [5, 15], [-5, 25], [5, 25], [-5, 35], [5, 35]].forEach(p => lamppost(p[0], p[1]));
   for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) lamppost(Math.sin(a) * (PR - 1), Math.cos(a) * (PR - 1));

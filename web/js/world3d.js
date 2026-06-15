@@ -313,6 +313,18 @@ function signpost(x, z, rot) {
   const board = box(1.5, 0.7, 0.12, 0x9a7038); board.position.y = 1.7;
   g.add(post, board); g.position.set(x, 0, z); if (rot) g.rotation.y = rot; shadowCasters(g); scene.add(g);
 }
+// closed fence perimeter around the town, with the gate set into the front wall (corners connected)
+function buildFence() {
+  const FX = 20, ZN = -19, ZS = 44, ST = 3.6;     // bounds + tiling step (slight overlap = no gaps)
+  function seg(x, z, rot) {
+    if (placeStatic("fence_wood", x, z, ENV_SCALE, rot)) return;
+    const f = box(3.4, 1.3, 0.25, 0x6a4a2a); f.position.set(x, 0.65, z); if (rot) f.rotation.y = rot; f.castShadow = true; scene.add(f);
+  }
+  for (let z = ZN; z <= ZS + 0.01; z += ST) { seg(-FX, z, 0); seg(FX, z, 0); }       // left & right walls (along z)
+  for (let x = -FX; x <= FX + 0.01; x += ST) seg(x, ZN, Math.PI / 2);                // back wall (along x)
+  for (let x = -FX; x <= FX + 0.01; x += ST) { if (Math.abs(x) < 4.5) continue; seg(x, ZS, Math.PI / 2); } // front wall, gate gap
+  if (!placeStatic("fence_gate", 0, ZS, ENV_SCALE, Math.PI / 2)) { const g = box(8, 2.4, 0.3, 0x8a6a3a); g.position.set(0, 1.2, ZS); g.castShadow = true; scene.add(g); }
+}
 function buildTown() {
   const PR = 12;                 // central square radius (cozy)
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(PR, 40), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
@@ -339,9 +351,7 @@ function buildTown() {
     const x = e[1], z = e[2], rot = (e.length > 3 ? e[3] : Math.atan2(-x, -z));
     if (!placeStatic(e[0], x, z, ENV_SCALE, rot)) house(x, z, rot, roofCols[(ci++) % roofCols.length]);
   }
-  // wooden fences lining the street + a gate at the entrance
-  for (let z = 15; z <= 42; z += 4) { placeStatic("fence_wood", -9.5, z, ENV_SCALE, 0); placeStatic("fence_wood", 9.5, z, ENV_SCALE, 0); }
-  placeStatic("fence_gate", 0, 44, ENV_SCALE, Math.PI / 2);
+  buildFence();   // closed perimeter wall + gate at the entrance
   // signposts at the gate and square
   signpost(-4, 43, 0.4); signpost(3.5, 11, -0.5);
   // banners, market tent, weapon rack, wheelbarrow

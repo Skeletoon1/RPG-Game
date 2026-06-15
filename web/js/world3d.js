@@ -308,20 +308,25 @@ function addMotes() {
 }
 
 function buildTown() {
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(18, 48), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
+  const PR = 20;                 // plaza radius
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PR, 48), new THREE.MeshLambertMaterial({ map: makePlazaTexture() }));
   plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.07; plaza.receiveShadow = true; scene.add(plaza);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(18, 0.4, 8, 48), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
-  if (!placeStatic("b_well", 0, 0, ENV_SCALE)) fountain(0, 0);   // centerpiece
-  const BLD = ["b_home_a", "b_home_b", "b_tavern", "b_church", "b_market", "b_blacksmith", "b_windmill", "b_tower"];
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(PR, 0.45, 8, 56), toon(0xb9a06a)); rim.rotation.x = -Math.PI / 2; rim.position.y = 0.2; scene.add(rim);
+  if (!placeStatic("b_well", 0, 0, 3.2)) fountain(0, 0);   // centerpiece
+  // ring of buildings around the plaza, with an entrance gap toward the player (south / +z)
+  const BLD = ["b_home_a", "b_tavern", "b_home_b", "b_church", "b_home_a", "b_market", "b_home_b", "b_blacksmith", "b_windmill", "b_home_a", "b_tower", "b_home_b"];
   const roofCols = [0xe05a5a, 0x5a86e0, 0x5ac06a, 0xe0a83c, 0x9a5ae0, 0xe07ab0];
+  const BR = 30;                 // building ring radius
   let ci = 0;
-  for (let a = -2.4; a <= 2.4; a += 0.6) {
-    const d = 28, x = Math.sin(a) * d, z = Math.cos(a) * d - 4, rot = Math.atan2(-x, -z);
-    if (!placeStatic(BLD[ci % BLD.length], x, z, ENV_SCALE, rot)) house(x, z, a + Math.PI, roofCols[ci % roofCols.length]);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    if (Math.cos(a) > 0.78) continue;            // leave a gap on the +z side (entrance)
+    const x = Math.sin(a) * BR, z = Math.cos(a) * BR, rot = Math.atan2(-x, -z);
+    if (!placeStatic(BLD[ci % BLD.length], x, z, ENV_SCALE, rot)) house(x, z, rot, roofCols[ci % roofCols.length]);
     ci++;
   }
-  for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) lamppost(Math.sin(a) * 16, Math.cos(a) * 16);
-  for (let i = 0; i < 10; i++) { const x = rand(30), z = -10 - Math.random() * 22; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, ENV_SCALE, Math.random() * 6)) barrel(x, z); }
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) lamppost(Math.sin(a) * (PR - 1.5), Math.cos(a) * (PR - 1.5));
+  for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, d = PR + 3 + Math.random() * 5, x = Math.sin(a) * d, z = Math.cos(a) * d; if (!placeStatic(Math.random() < 0.6 ? "barrel" : "crate", x, z, ENV_SCALE, Math.random() * 6)) barrel(x, z); }
 }
 function fountain(x, z) {
   const grp = new THREE.Group();
@@ -363,15 +368,15 @@ function primRock(x, z) {
   rock.position.set(x, 0.6, z); rock.rotation.set(Math.random(), Math.random(), Math.random()); rock.castShadow = true; scene.add(rock);
 }
 function buildScenery() {
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 110; i++) {
     const x = rand(WORLD), z = rand(WORLD);
-    if (Math.hypot(x, z) < 34) continue;
+    if (Math.hypot(x, z) < 42) continue;                 // keep clear of the town
     const rot = Math.random() * 6.28;
-    if (Math.random() < 0.62) {
+    if (Math.random() < 0.66) {
       const k = Math.random() < 0.4 ? "tree_a" : (Math.random() < 0.6 ? "tree_b" : "trees_lg");
-      if (!placeStatic(k, x, z, ENV_SCALE, rot)) primTree(x, z);
+      if (!placeStatic(k, x, z, ENV_SCALE * THREE.MathUtils.randFloat(0.8, 1.35), rot)) primTree(x, z);
     } else {
-      if (!placeStatic(Math.random() < 0.5 ? "rock_a" : "rock_c", x, z, ENV_SCALE, rot)) primRock(x, z);
+      if (!placeStatic(Math.random() < 0.5 ? "rock_a" : "rock_c", x, z, ENV_SCALE * THREE.MathUtils.randFloat(0.7, 1.2), rot)) primRock(x, z);
     }
   }
   // distant mountain ring (hazy blue for daytime)

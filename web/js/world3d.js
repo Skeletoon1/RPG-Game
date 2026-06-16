@@ -322,8 +322,11 @@ function buildFence() {
   }
   for (let z = ZN; z <= ZS + 0.01; z += ST) { seg(-FX, z, 0); seg(FX, z, 0); }       // left & right walls (along z)
   for (let x = -FX; x <= FX + 0.01; x += ST) seg(x, ZN, Math.PI / 2);                // back wall (along x)
-  for (let x = -FX; x <= FX + 0.01; x += ST) { if (Math.abs(x) < 4.5) continue; seg(x, ZS, Math.PI / 2); } // front wall, gate gap
+  // gate at the centre of the front wall, with wall segments butting right up to it + corners closed
+  const GH = 2.6;                                   // half the gate's width
   if (!placeStatic("fence_gate", 0, ZS, ENV_SCALE, Math.PI / 2)) { const g = box(8, 2.4, 0.3, 0x8a6a3a); g.position.set(0, 1.2, ZS); g.castShadow = true; scene.add(g); }
+  for (let x = GH; x < FX - 1; x += ST) { seg(x, ZS, Math.PI / 2); seg(-x, ZS, Math.PI / 2); }  // from gate edge outward
+  seg(FX, ZS, Math.PI / 2); seg(-FX, ZS, Math.PI / 2);   // explicit front corner segments
 }
 function buildTown() {
   const PR = 12;                 // central square radius (cozy)
